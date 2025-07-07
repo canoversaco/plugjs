@@ -100,7 +100,6 @@ export default class LoginView extends React.Component {
             placeholder="Benutzername"
             value={username}
             onChange={(e) => this.setState({ username: e.target.value })}
-            list="usernames"
             style={{
               width: "100%",
               padding: "13px 15px",
