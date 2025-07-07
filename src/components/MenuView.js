@@ -1,5 +1,16 @@
+// src/components/MenuView.js
 import React from "react";
-import images from "./images/images";
+import images from "./images/images"; // Pfad ggf. anpassen!
+
+// Kategorie-Emojis als kleines Extra:
+const KAT_EMOJIS = {
+  Standard: "🛍️",
+  Hase: "🍀",
+  Shem: "🧊",
+  Schoko: "🍫",
+  Medikamente: "🧪",
+  Cali: "🍹",
+};
 
 export default class MenuView extends React.Component {
   constructor(props) {
@@ -14,6 +25,7 @@ export default class MenuView extends React.Component {
       selectedKat: kategorien[0]?.name || "",
       menge: {},
       error: "",
+      imgActive: "", // für Klick-Animation
     };
   }
 
@@ -23,13 +35,19 @@ export default class MenuView extends React.Component {
     const { selectedKat } = this.state;
     return produkte
       .filter((p) => (p.kategorie || "Standard") === selectedKat)
-      .sort((a, b) => (a.preis || 0) - (b.preis || 0)); // <-- nach Preis sortieren!
+      .sort((a, b) => (a.preis || 0) - (b.preis || 0));
   };
 
   handleMengeChange = (produktId, val) => {
     this.setState((s) => ({
       menge: { ...s.menge, [produktId]: Math.max(1, Number(val) || 1) },
     }));
+  };
+
+  // Für Bild-Klickanimation
+  handleImgClick = (id) => {
+    this.setState({ imgActive: id });
+    setTimeout(() => this.setState({ imgActive: "" }), 210);
   };
 
   render() {
@@ -41,7 +59,7 @@ export default class MenuView extends React.Component {
       onGoBack,
       produkte = [],
     } = this.props;
-    const { kategorien, selectedKat, menge, error } = this.state;
+    const { kategorien, selectedKat, menge, error, imgActive } = this.state;
 
     const cartMenge = (produktId) =>
       warenkorb.find((w) => w.produktId === produktId)?.menge || 0;
@@ -55,18 +73,53 @@ export default class MenuView extends React.Component {
       <div
         style={{
           minHeight: "100vh",
-          background: "#1a1b1e",
+          background: "linear-gradient(130deg, #161718 60%, #1a222f 100%)",
           color: "#fff",
           fontFamily: "'Inter', sans-serif",
           padding: 30,
         }}
       >
+        {/* Animations-Styles */}
+        <style>{`
+          .menu-kat-btn {
+            transition: background 0.18s, color 0.14s, transform 0.13s;
+            box-shadow: 0 2px 8px #00000020;
+          }
+          .menu-kat-btn.selected, .menu-kat-btn:active {
+            background: #38bdf8 !important;
+            color: #18181b !important;
+            transform: scale(1.06);
+            box-shadow: 0 4px 24px #38bdf855;
+          }
+          .menu-prod-img {
+            transition: transform 0.16s cubic-bezier(.41,.8,.59,1.21), box-shadow 0.18s;
+            cursor: pointer;
+          }
+          .menu-prod-img:hover {
+            transform: scale(1.09);
+            box-shadow: 0 3px 16px #38bdf850;
+          }
+          .menu-prod-img.active {
+            transform: scale(1.18) !important;
+            box-shadow: 0 5px 25px #a3e63580;
+          }
+          .menu-cart-btn, .menu-remove-btn {
+            transition: background 0.13s, color 0.13s, transform 0.14s;
+            box-shadow: 0 2px 8px #38bdf822;
+          }
+          .menu-cart-btn:active, .menu-remove-btn:active {
+            transform: scale(0.96);
+            filter: brightness(0.93);
+          }
+        `}</style>
+
+        {/* Header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 20,
-            marginBottom: 18,
+            marginBottom: 22,
           }}
         >
           <button
@@ -74,19 +127,37 @@ export default class MenuView extends React.Component {
             style={{
               background: "#23262e",
               color: "#fff",
-              borderRadius: 8,
+              borderRadius: 9,
               border: 0,
-              padding: "10px 22px",
-              fontSize: 16,
-              fontWeight: 700,
+              padding: "10px 23px",
+              fontSize: 16.5,
+              fontWeight: 800,
               cursor: "pointer",
               marginRight: 7,
+              boxShadow: "0 2px 8px #0003",
             }}
           >
             ⬅️ Zurück
           </button>
-          <h2 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
-            🍃 Produkt-Menü
+          <h2
+            style={{
+              fontSize: 29,
+              fontWeight: 900,
+              margin: 0,
+              letterSpacing: 0.2,
+            }}
+          >
+            🛍️ Menü{" "}
+            <span
+              style={{
+                fontWeight: 400,
+                fontSize: 19,
+                color: "#38bdf8",
+                marginLeft: 10,
+              }}
+            >
+              [Auswahl]
+            </span>
           </h2>
         </div>
 
@@ -95,30 +166,37 @@ export default class MenuView extends React.Component {
           style={{
             display: "flex",
             gap: 14,
-            marginBottom: 22,
+            marginBottom: 26,
             flexWrap: "wrap",
           }}
         >
           {kategorien.map((kat) => (
             <button
               key={kat.name}
+              className={
+                "menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")
+              }
               onClick={() => this.setState({ selectedKat: kat.name })}
               style={{
                 background: selectedKat === kat.name ? "#38bdf8" : "#23262e",
                 color: selectedKat === kat.name ? "#18181b" : "#fff",
                 border: 0,
-                borderRadius: 10,
-                padding: "8px 22px",
-                fontWeight: 700,
+                borderRadius: 12,
+                padding: "9px 25px",
+                fontWeight: 800,
                 fontSize: 17,
                 cursor: "pointer",
-                boxShadow:
-                  selectedKat === kat.name
-                    ? "0 2px 10px #38bdf822"
-                    : "0 2px 8px #00000010",
-                transition: "all 0.13s",
+                minWidth: 70,
+                letterSpacing: 0.15,
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                fontFamily: "inherit",
               }}
             >
+              <span style={{ fontSize: 21 }}>
+                {KAT_EMOJIS[kat.name] || "🛍️"}
+              </span>
               {kat.name}
             </button>
           ))}
@@ -128,8 +206,8 @@ export default class MenuView extends React.Component {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(370px, 1fr))",
-            gap: 24,
+            gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+            gap: 26,
             marginBottom: 28,
           }}
         >
@@ -140,13 +218,13 @@ export default class MenuView extends React.Component {
                 gridColumn: "1/-1",
                 fontSize: 18,
                 fontWeight: 500,
-                padding: 25,
+                padding: 24,
                 textAlign: "center",
                 background: "#23262e",
-                borderRadius: 12,
+                borderRadius: 14,
               }}
             >
-              Keine Produkte in dieser Kategorie.
+              😕 Keine Produkte in dieser Kategorie.
             </div>
           ) : (
             this.filterProdukte().map((p) => (
@@ -154,54 +232,78 @@ export default class MenuView extends React.Component {
                 key={p.id}
                 style={{
                   background: "#23262e",
-                  borderRadius: 16,
+                  borderRadius: 18,
                   padding: 22,
                   display: "flex",
                   flexDirection: "row",
                   alignItems: "center",
-                  boxShadow: "0 2px 12px #00000014",
+                  boxShadow: "0 2px 14px #00000018",
                   gap: 20,
-                  minHeight: 110,
+                  minHeight: 112,
                 }}
               >
                 <img
                   src={images[p.bildName] || images.defaultBild}
                   alt={p.name}
+                  className={
+                    "menu-prod-img" + (imgActive === p.id ? " active" : "")
+                  }
                   style={{
-                    width: 75,
-                    height: 75,
+                    width: 80,
+                    height: 80,
                     objectFit: "cover",
-                    borderRadius: 14,
-                    border: "2px solid #23262e",
-                    background: "#111",
+                    borderRadius: 16,
+                    border: "2.3px solid #18181b",
+                    background: "#18181b",
                   }}
+                  onMouseDown={() => this.handleImgClick(p.id)}
+                  onMouseUp={() => this.setState({ imgActive: "" })}
+                  onMouseLeave={() => this.setState({ imgActive: "" })}
+                  tabIndex={0}
                 />
                 <div style={{ flex: 1 }}>
                   <div
-                    style={{ fontWeight: 800, fontSize: 21, marginBottom: 2 }}
+                    style={{
+                      fontWeight: 900,
+                      fontSize: 22,
+                      marginBottom: 2,
+                      letterSpacing: 0.03,
+                    }}
                   >
-                    {p.name}
+                    {p.name}{" "}
+                    <span
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 500,
+                        color: "#38bdf8",
+                      }}
+                    >
+                      {KAT_EMOJIS[p.kategorie] || ""}
+                    </span>
                   </div>
                   <div
                     style={{
-                      fontSize: 15,
+                      fontSize: 15.5,
                       color: "#a1a1aa",
-                      marginBottom: 4,
-                      minHeight: 18,
+                      marginBottom: 5,
+                      minHeight: 19,
+                      letterSpacing: 0.02,
                     }}
                   >
                     {p.beschreibung}
                   </div>
-                  <div style={{ fontSize: 16, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, color: "#a3e635" }}>
-                      {p.preis} €/g
-                    </span>{" "}
-                    <span style={{ color: "#bbb" }}>
+                  <div
+                    style={{ fontSize: 16.5, marginBottom: 4, fontWeight: 700 }}
+                  >
+                    <span style={{ color: "#a3e635" }}>{p.preis} €/g</span>
+                    <span
+                      style={{ color: "#bbb", fontWeight: 500, marginLeft: 9 }}
+                    >
                       | Bestand: {p.bestand}
                     </span>
                   </div>
                   <div
-                    style={{ display: "flex", gap: 7, alignItems: "center" }}
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
                   >
                     <input
                       type="number"
@@ -211,7 +313,7 @@ export default class MenuView extends React.Component {
                         this.handleMengeChange(p.id, e.target.value)
                       }
                       style={{
-                        width: 44,
+                        width: 46,
                         background: "#18181b",
                         color: "#fff",
                         border: "1px solid #333",
@@ -219,9 +321,11 @@ export default class MenuView extends React.Component {
                         padding: "7px 6px",
                         fontWeight: 700,
                         fontSize: 15,
+                        marginRight: 2,
                       }}
                     />
                     <button
+                      className="menu-cart-btn"
                       onClick={() => {
                         const m = menge[p.id] || 1;
                         for (let i = 0; i < m; ++i) onAddToCart(p.id);
@@ -231,29 +335,31 @@ export default class MenuView extends React.Component {
                         background: "#a3e635",
                         color: "#18181b",
                         fontWeight: 900,
-                        borderRadius: 8,
+                        borderRadius: 9,
                         border: 0,
-                        padding: "9px 17px",
+                        padding: "9px 18px",
                         fontSize: 16,
                         cursor: p.bestand === 0 ? "not-allowed" : "pointer",
                         opacity: p.bestand === 0 ? 0.5 : 1,
-                        transition: "opacity 0.14s",
+                        marginRight: 4,
                       }}
                     >
                       ➕ Hinzufügen
                     </button>
                     {cartMenge(p.id) > 0 && (
                       <button
+                        className="menu-remove-btn"
                         onClick={() => onRemoveFromCart(p.id)}
                         style={{
                           background: "#f87171",
                           color: "#fff",
                           border: 0,
-                          borderRadius: 8,
-                          padding: "8px 15px",
+                          borderRadius: 9,
+                          padding: "8px 13px",
                           fontWeight: 700,
-                          fontSize: 14,
+                          fontSize: 15,
                           cursor: "pointer",
+                          marginLeft: 1,
                         }}
                       >
                         − Entfernen
@@ -270,14 +376,14 @@ export default class MenuView extends React.Component {
         <div
           style={{
             margin: "0 auto",
-            background: "#191a20",
-            borderRadius: 18,
-            padding: 22,
+            background: "#18181b",
+            borderRadius: 19,
+            padding: 23,
             maxWidth: 500,
-            boxShadow: "0 2px 24px #00000023",
+            boxShadow: "0 2px 28px #00000025",
           }}
         >
-          <h3 style={{ fontWeight: 800, fontSize: 20, marginBottom: 13 }}>
+          <h3 style={{ fontWeight: 900, fontSize: 20, marginBottom: 13 }}>
             🛒 Dein Warenkorb
           </h3>
           {warenkorb.length === 0 ? (
@@ -291,10 +397,10 @@ export default class MenuView extends React.Component {
                   (pr) => pr.id === item.produktId
                 );
                 return (
-                  <li key={idx} style={{ fontSize: 16, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700 }}>{p?.name || "?"}</span> ×{" "}
+                  <li key={idx} style={{ fontSize: 16.5, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 800 }}>{p?.name || "?"}</span> ×{" "}
                     {item.menge} ={" "}
-                    <span style={{ fontWeight: 700 }}>
+                    <span style={{ fontWeight: 800 }}>
                       {(p?.preis * item.menge).toFixed(2)} €
                     </span>
                   </li>
@@ -304,10 +410,10 @@ export default class MenuView extends React.Component {
           )}
           <div
             style={{
-              fontWeight: 800,
+              fontWeight: 900,
               fontSize: 19,
               marginTop: 8,
-              marginBottom: 6,
+              marginBottom: 7,
               color: "#a3e635",
             }}
           >
@@ -320,15 +426,15 @@ export default class MenuView extends React.Component {
               background: warenkorb.length === 0 ? "#444" : "#38bdf8",
               color: "#18181b",
               fontWeight: 900,
-              borderRadius: 11,
+              borderRadius: 12,
               border: 0,
               padding: "14px 36px",
               fontSize: 18,
-              marginTop: 12,
+              marginTop: 11,
               marginBottom: 4,
               cursor: warenkorb.length === 0 ? "not-allowed" : "pointer",
-              boxShadow: warenkorb.length === 0 ? "" : "0 2px 8px #38bdf833",
-              transition: "background 0.14s",
+              boxShadow: warenkorb.length === 0 ? "" : "0 2px 12px #38bdf822",
+              transition: "background 0.13s, transform 0.13s",
             }}
           >
             ✅ Zur Kasse
