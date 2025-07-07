@@ -79,9 +79,7 @@ export default class AdminView extends React.Component {
     this.setState({ broadcasts });
   };
 
-const [lottos, setLottos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+
 
   // Broadcast anlegen
   handleSendBroadcast = async () => {
@@ -373,7 +371,9 @@ const [lottos, setLottos] = useState([]);
           numeric: true,
         })
     );
-
+const [lottos, setLottos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
     return (
       <div
         style={{
