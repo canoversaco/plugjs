@@ -1,7 +1,7 @@
 import React from "react";
 
 export default class LoginView extends React.Component {
-  state = { username: "", password: "", error: "" };
+  state = { username: "", password: "", error: "", pwShow: false };
 
   handleLogin = () => {
     const { users, onLogin } = this.props;
@@ -22,8 +22,7 @@ export default class LoginView extends React.Component {
   };
 
   render() {
-    const { users } = this.props;
-    const { username, password, error } = this.state;
+    const { username, password, error, pwShow } = this.state;
 
     return (
       <div
@@ -51,16 +50,18 @@ export default class LoginView extends React.Component {
             flexDirection: "column",
             alignItems: "center",
             gap: 0,
+            animation: "fadeIn 0.6s cubic-bezier(.43,.13,.23,1.12)"
           }}
         >
-          {/* Icon/Banner */}
+          {/* Banner/Icon */}
           <div
             style={{
-              fontSize: 48,
-              marginBottom: 3,
+              fontSize: 50,
+              marginBottom: 4,
               filter: "drop-shadow(0 6px 18px #e3ff6459)",
               textShadow: "0 1px 22px #e3ff6459",
               userSelect: "none",
+              animation: "popUp .7s"
             }}
           >
             🪙
@@ -71,7 +72,7 @@ export default class LoginView extends React.Component {
               fontSize: 27,
               color: "#e3ff64",
               letterSpacing: 1,
-              marginBottom: 7,
+              marginBottom: 9,
               textAlign: "center",
               textShadow: "0 4px 20px #e3ff6415",
               fontFamily: "inherit",
@@ -83,10 +84,10 @@ export default class LoginView extends React.Component {
             style={{
               color: "#38bdf8",
               fontWeight: 700,
-              fontSize: 15.2,
-              marginBottom: 26,
+              fontSize: 15.5,
+              marginBottom: 24,
               textAlign: "center",
-              letterSpacing: 0.1,
+              letterSpacing: 0.08,
               opacity: 0.98,
             }}
           >
@@ -110,29 +111,26 @@ export default class LoginView extends React.Component {
               fontWeight: 700,
               background: "#111217",
               color: "#e3ff64",
-              marginBottom: 11,
+              marginBottom: 12,
               transition: "border 0.15s, box-shadow 0.15s",
               boxShadow:
                 username && username.length > 1
                   ? "0 0 0 2px #38bdf833"
                   : "0 0 0 0px transparent",
+              letterSpacing: 0.05,
             }}
             onFocus={e => e.target.style.border = "2px solid #38bdf8"}
             onBlur={e => e.target.style.border = "2px solid #18181b"}
             onKeyDown={(e) => e.key === "Enter" && this.handleLogin()}
             autoFocus
             autoComplete="username"
+            spellCheck={false}
           />
-          <datalist id="usernames">
-            {users.map((u) => (
-              <option key={u.id} value={u.username} />
-            ))}
-          </datalist>
 
           {/* Passwort */}
           <div style={{ position: "relative", width: "100%" }}>
             <input
-              type="password"
+              type={pwShow ? "text" : "password"}
               placeholder="Passwort"
               value={password}
               onChange={(e) => this.setState({ password: e.target.value })}
@@ -146,18 +144,19 @@ export default class LoginView extends React.Component {
                 fontWeight: 700,
                 background: "#111217",
                 color: "#fff",
-                marginBottom: 13,
+                marginBottom: 15,
                 transition: "border 0.15s, box-shadow 0.15s",
                 boxShadow:
                   password && password.length > 2
                     ? "0 0 0 2px #a3e63544"
                     : "0 0 0 0px transparent",
-                letterSpacing: 1.2,
+                letterSpacing: 1.1,
               }}
               onFocus={e => e.target.style.border = "2px solid #a3e635"}
               onBlur={e => e.target.style.border = "2px solid #18181b"}
               onKeyDown={(e) => e.key === "Enter" && this.handleLogin()}
               autoComplete="current-password"
+              spellCheck={false}
             />
             {/* Password eye/emoji */}
             <div
@@ -170,10 +169,13 @@ export default class LoginView extends React.Component {
                 color: "#a1a1aa",
                 opacity: 0.5,
                 userSelect: "none",
+                cursor: "pointer",
+                zIndex: 10,
               }}
-              title="Sichtbar machen (bald)"
+              title={pwShow ? "Verbergen" : "Anzeigen"}
+              onClick={() => this.setState(s => ({ pwShow: !s.pwShow }))}
             >
-              👁️
+              {pwShow ? "🙈" : "👁️"}
             </div>
           </div>
 
@@ -189,13 +191,13 @@ export default class LoginView extends React.Component {
               borderRadius: 11,
               fontWeight: 900,
               fontSize: 19,
-              marginTop: 3,
+              marginTop: 2,
               boxShadow: "0 2px 22px #e3ff6436",
               letterSpacing: 0.3,
-              cursor: "pointer",
-              transition: "filter 0.13s, box-shadow 0.13s",
+              cursor: (!username || !password) ? "not-allowed" : "pointer",
               filter: (!username || !password) ? "brightness(0.7)" : undefined,
               opacity: (!username || !password) ? 0.7 : 1,
+              transition: "filter 0.13s, box-shadow 0.13s"
             }}
             disabled={!username || !password}
           >
@@ -223,6 +225,19 @@ export default class LoginView extends React.Component {
             </div>
           )}
         </div>
+        {/* Fancy Animations */}
+        <style>
+          {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96) translateY(16px);}
+            to { opacity: 1; transform: scale(1) translateY(0);}
+          }
+          @keyframes popUp {
+            from { transform: scale(0.82);}
+            to { transform: scale(1);}
+          }
+          `}
+        </style>
       </div>
     );
   }
