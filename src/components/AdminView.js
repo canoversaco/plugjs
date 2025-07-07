@@ -18,7 +18,7 @@ const TABS = [
   { key: "orders", label: "📦 Bestellungen" },
   { key: "users", label: "👤 Nutzer" },
   { key: "broadcast", label: "📢 Broadcast" },
-  { key: "deposits", label: "💸 Einzahlungen" },
+  { key: "deposits", label: "💸 Einzahlungen" },{ key: "lotto", label: "🎰 Lotto" },
 ];
 
 export default class AdminView extends React.Component {
@@ -450,6 +450,208 @@ export default class AdminView extends React.Component {
               </button>
             ))}
           </div>
+          // ... (Rest deines Codes bleibt wie gehabt)
+
+//LOTTO TAB
+function LottoAdminTab() {
+  const [lottos, setLottos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "lottos"), (snap) => {
+      const lottos = [];
+      snap.forEach((d) => lottos.push({ id: d.id, ...d.data() }));
+      // Neueste oben
+      lottos.sort((a, b) => (b.start || 0) - (a.start || 0));
+      setLottos(lottos);
+    });
+    return unsub;
+  }, []);
+
+  // Ziehung starten
+  async function startLotto() {
+    setLoading(true);
+    setMessage("");
+    try {
+      const now = Date.now();
+      // 7 Tage Laufzeit (in ms)
+      await addDoc(collection(db, "lottos"), {
+        start: now,
+        end: now + 7 * 24 * 3600 * 1000,
+        pot: 0,
+        teilnehmer: [],
+        finished: false,
+        gebuehren: 10,
+      });
+      setMessage("Lotto-Ziehung gestartet!");
+    } catch {
+      setMessage("Fehler beim Start!");
+    }
+    setLoading(false);
+  }
+
+  // Ziehung abschließen, Gewinner festlegen und Guthaben auszahlen
+  async function ziehungBeenden(lotto) {
+    if (lotto.finished) return;
+    if (!lotto.teilnehmer || lotto.teilnehmer.length === 0) {
+      setMessage("Keine Teilnehmer!");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      // Zufälligen Gewinner wählen
+      const winner =
+        lotto.teilnehmer[Math.floor(Math.random() * lotto.teilnehmer.length)];
+      const gewinnbetrag = Math.round((lotto.pot || 0) * 0.9 * 100) / 100;
+
+      // Guthaben an Gewinner auszahlen
+      const userRef = doc(db, "users", winner.userId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      await updateDoc(userRef, {
+        guthaben: (userData.guthaben ?? 0) + gewinnbetrag,
+      });
+
+      // Gewinner und Gewinn speichern
+      await updateDoc(doc(db, "lottos", lotto.id), {
+        finished: true,
+        winner: { ...winner, gewinn: gewinnbetrag },
+      });
+
+      setMessage(
+        `Ziehung abgeschlossen! Gewinner: ${anonymisiereName(
+          winner.username
+        )} (+${gewinnbetrag.toFixed(2)} €)`
+      );
+    } catch (e) {
+      setMessage("Fehler bei der Auszahlung!");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ maxWidth: 580, margin: "0 auto", paddingTop: 12 }}>
+      <h3 style={{ fontWeight: 900, fontSize: 25, marginBottom: 17 }}>
+        🎰 Lotto-Verwaltung
+      </h3>
+      <button
+        onClick={startLotto}
+        disabled={loading || lottos.some((l) => !l.finished)}
+        style={{
+          background: "linear-gradient(97deg,#a3e635 70%,#38bdf8 100%)",
+          color: "#18181b",
+          fontWeight: 900,
+          border: 0,
+          borderRadius: 11,
+          fontSize: 19,
+          padding: "13px 0",
+          cursor: "pointer",
+          width: "100%",
+          marginBottom: 19,
+          boxShadow: "0 2px 14px #a3e63533",
+        }}
+      >
+        Neue Ziehung starten
+      </button>
+      {message && (
+        <div
+          style={{
+            color:
+              message.startsWith("Lotto") ||
+              message.startsWith("Ziehung abgeschlossen")
+                ? "#a3e635"
+                : "#f87171",
+            marginBottom: 13,
+            fontWeight: 700,
+          }}
+        >
+          {message}
+        </div>
+      )}
+      <div>
+        {lottos.length === 0 ? (
+          <div style={{ color: "#aaa" }}>Noch keine Ziehung vorhanden.</div>
+        ) : (
+          lottos.map((lotto) => (
+            <div
+              key={lotto.id}
+              style={{
+                background: "#23262e",
+                borderRadius: 11,
+                padding: 15,
+                marginBottom: 18,
+                boxShadow: "0 2px 10px #38bdf822",
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: 18 }}>
+                Start: {new Date(lotto.start).toLocaleString()} <br />
+                Ende: {new Date(lotto.end).toLocaleString()}
+              </div>
+              <div style={{ fontSize: 15, margin: "7px 0" }}>
+                Pot: <b>{lotto.pot?.toFixed(2) ?? "0.00"} €</b>
+                <br />
+                Teilnehmer: <b>{lotto.teilnehmer?.length ?? 0}</b>
+              </div>
+              <div>
+                {lotto.teilnehmer && lotto.teilnehmer.length > 0 && (
+                  <div style={{ fontSize: 15, margin: "7px 0" }}>
+                    <b>Teilnehmer:</b>
+                    <ul style={{ margin: 0, paddingLeft: 14 }}>
+                      {lotto.teilnehmer.map((t, i) => (
+                        <li key={i}>{anonymisiereName(t.username)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              {lotto.finished && lotto.winner ? (
+                <div
+                  style={{
+                    color: "#a3e635",
+                    fontWeight: 800,
+                    fontSize: 16.5,
+                    marginTop: 9,
+                  }}
+                >
+                  🏆 Gewinner: {anonymisiereName(lotto.winner.username)} <br />
+                  Gewinn: <b>+{(lotto.winner.gewinn || 0).toFixed(2)} €</b>
+                </div>
+              ) : (
+                <button
+                  onClick={() => ziehungBeenden(lotto)}
+                  disabled={loading}
+                  style={{
+                    background: "#38bdf8",
+                    color: "#18181b",
+                    fontWeight: 900,
+                    border: 0,
+                    borderRadius: 8,
+                    fontSize: 16,
+                    padding: "9px 0",
+                    cursor: "pointer",
+                    marginTop: 6,
+                  }}
+                >
+                  Ziehung beenden & Gewinner ziehen
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function anonymisiereName(name) {
+  if (!name) return "";
+  if (name.length < 2) return "***";
+  return name.slice(0, 2) + "***" + name.slice(-2);
+}
+
+// ... (Rest deines Codes bleibt unverändert)
           {/* PRODUKTE-TAB */}
           {tab === "produkte" && (
             <div>
