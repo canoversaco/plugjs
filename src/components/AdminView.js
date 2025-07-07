@@ -79,6 +79,10 @@ export default class AdminView extends React.Component {
     this.setState({ broadcasts });
   };
 
+const [lottos, setLottos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
   // Broadcast anlegen
   handleSendBroadcast = async () => {
     const text = this.state.broadcastText.trim();
@@ -454,9 +458,7 @@ export default class AdminView extends React.Component {
 
 //LOTTO TAB
 function LottoAdminTab() {
-  const [lottos, setLottos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "lottos"), (snap) => {
