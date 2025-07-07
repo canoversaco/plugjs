@@ -53,7 +53,6 @@ export default class LoginView extends React.Component {
             animation: "fadeIn 0.6s cubic-bezier(.43,.13,.23,1.12)"
           }}
         >
-          {/* Banner/Icon */}
           <div
             style={{
               fontSize: 50,
@@ -95,7 +94,7 @@ export default class LoginView extends React.Component {
             Bitte melde dich an.
           </div>
 
-          {/* Username */}
+          {/* Username (NO DATAlist, NO Dropdown) */}
           <input
             type="text"
             placeholder="Benutzername"
@@ -225,7 +224,6 @@ export default class LoginView extends React.Component {
             </div>
           )}
         </div>
-        {/* Fancy Animations */}
         <style>
           {`
           @keyframes fadeIn {
