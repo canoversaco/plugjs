@@ -1,8 +1,117 @@
-// src/components/HomeView.js
 import React, { useState } from "react";
+import {
+  Wallet,
+  Ticket,
+  ShoppingCart,
+  Package,
+  LogOut,
+  UserCog,
+  Truck,
+  Bitcoin,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { Wallet } from "lucide-react"; // oder ein eigenes Icon
-import Broadcasts from "./Broadcast";
+// Hilfsfunktion für Restzeit
+function msToDHM(ms) {
+  const t = Math.max(0, ms);
+  const days = Math.floor(t / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((t / (1000 * 60 * 60)) % 24);
+  const mins = Math.floor((t / (1000 * 60)) % 60);
+  return `${days > 0 ? days + "d " : ""}${hours}h ${mins}m`;
+}
+
+// Modernere Card/Tile-Struktur für Aktionen!
+const ACTIONS = [
+  {
+    id: "menu",
+    label: "Menü",
+    icon: <ShoppingCart size={26} />,
+    color: "#18181b",
+    bg: "linear-gradient(133deg,#a3e635 85%,#38bdf855 100%)",
+    action: "onGotoMenu",
+  },
+  {
+    id: "orders",
+    label: "Bestellungen",
+    icon: <Package size={26} />,
+    color: "#fff",
+    bg: "linear-gradient(135deg,#38bdf8 85%,#a3e63533 100%)",
+    action: "onGotoOrders",
+  },
+  {
+    id: "passes",
+    label: "Pässe kaufen",
+    icon: <Ticket size={25} />,
+    color: "#fff",
+    bg: "linear-gradient(135deg,#a3e635 50%,#38bdf8bb 100%)",
+    action: "onGotoPass",
+  },
+  // --- LOTTO BUTTON HIER ---
+  {
+    id: "lotto",
+    label: "Lotto",
+    icon: <Ticket size={25} style={{ color: "#38bdf8" }} />, // Optional: 🎰 oder SlotMachine Icon
+    color: "#fff",
+    bg: "linear-gradient(125deg,#38bdf8 70%,#a3e635bb 100%)",
+    border: "2px solid #38bdf8",
+    action: "onGotoLotto",
+  },
+  // -------------------------
+  {
+    id: "crypto",
+    label: "Krypto kaufen",
+    icon: <Bitcoin size={25} />,
+    color: "#a3e635",
+    bg: "linear-gradient(127deg,#18181b 65%,#a3e63555 100%)",
+    border: "2px solid #a3e635",
+    action: "onBuyCryptoClick",
+  },
+  {
+    id: "admin",
+    label: "Admin Panel",
+    icon: <UserCog size={24} />,
+    color: "#fff",
+    bg: "linear-gradient(122deg,#18181b 60%,#38bdf877 100%)",
+    border: "2px solid #38bdf8",
+    role: "admin",
+    action: "onGotoAdmin",
+  },
+  {
+    id: "kurier",
+    label: "Kurier Panel",
+    icon: <Truck size={24} />,
+    color: "#fff",
+    bg: "linear-gradient(122deg,#18181b 60%,#38bdf877 100%)",
+    border: "2px solid #38bdf8",
+    role: "kurier",
+    action: "onGotoKurier",
+  },
+  {
+    id: "logout",
+    label: "Abmelden",
+    icon: <LogOut size={25} />,
+    color: "#fff",
+    bg: "linear-gradient(133deg,#f87171 75%,#18181b 100%)",
+    action: "onLogout",
+  },
+];
+
+// BROADCAST Demo
+const DEMO_BROADCASTS = [
+  {
+    id: 1,
+    text: "⚡ Krypto Update! Jetzt 5 € Krypto-Guthaben sichern im Wallet (oben rechts).",
+  },
+  {
+    id: 2,
+    text: "🔴 Mit Bitcoin zahlen und automatisch 5-10% sparen!",
+  },
+  {
+    id: 3,
+    text: "🛒 Neue Produkte und frische Preise ab sofort im Menü!",
+  },
+];
+
 export default function HomeView({
   user,
   onGotoMenu,
@@ -10,197 +119,318 @@ export default function HomeView({
   onGotoAdmin,
   onGotoKurier,
   onLogout,
-  broadcast,
   showBroadcast,
+  broadcast,
+  onGotoPass,
   closeBroadcast,
   onWalletClick,
   onBuyCryptoClick,
+  onGotoLotto, // NEU!
 }) {
-  const [broadcasts, setBroadcasts] = useState([
-    {
-      id: 1,
-      text: "⚡ Krypto Update! Check deine Wallet                (Symbol      oben Rechts) aus und siehe nach wie du Krypto Kaufen kannst. Du erhälst 5€ als Guthaben geschenkt! (Nur mit Krypto verwendbar!)",
-    },
-    {
-      id: 2,
-      text: "🔴 Zahle mit Bitcoin und spare zusätzlich bis 250€ 5% und über 250€ 10%!",
-    },
-  ]);
+  const [broadcasts, setBroadcasts] = useState(DEMO_BROADCASTS);
 
   const removeBroadcast = (id) =>
-    setBroadcasts(broadcasts.filter((b) => b.id !== id));
+    setBroadcasts((prev) => prev.filter((b) => b.id !== id));
+
+  // Aktiver Pass
+  const aktiverPass =
+    user?.pass && user.pass.gültigBis && user.pass.gültigBis > Date.now()
+      ? user.pass
+      : null;
+  const gespart = aktiverPass?.gespartAktuell ?? 0;
+  const rabattLimit =
+    (aktiverPass?.maxRabatt ?? aktiverPass?.gesparlimit ?? 0) - gespart;
+
+  // Grid-Layout für Aktionen
+  const role = user.rolle || user.role;
+  const actionGrid = ACTIONS.filter(
+    (a) =>
+      !a.role ||
+      (a.role === "admin" && role === "admin") ||
+      (a.role === "kurier" && (role === "kurier" || role === "admin"))
+  );
+
   return (
     <div
       style={{
-        background: "#18181b",
         minHeight: "100vh",
+        background:
+          "radial-gradient(circle at 35% 40%, #222931 63%, #191e24 100%)",
         fontFamily: "'Inter',sans-serif",
         padding: 0,
-        position: "relative",
+        margin: 0,
+        overflow: "auto",
       }}
     >
-      {/* Wallet Button oben rechts */}
-      <div style={{ position: "absolute", right: 32, top: 32, zIndex: 50 }}>
+      {/* Wallet oben rechts */}
+      <div style={{ position: "fixed", right: 32, top: 32, zIndex: 80 }}>
         <button
           onClick={onWalletClick}
           style={{
-            background: "#23262e",
+            background: "#18181b",
             color: "#a3e635",
-            border: 0,
-            borderRadius: 13,
-            padding: 11,
-            fontWeight: 800,
-            fontSize: 24,
+            border: "2px solid #23262e",
+            borderRadius: "50%",
+            padding: 13,
+            fontWeight: 900,
+            fontSize: 26,
             cursor: "pointer",
-            boxShadow: "0 2px 10px #0006",
-            display: "flex",
-            alignItems: "center",
-            gap: 9,
+            boxShadow: "0 2px 12px #38bdf844, 0 2px 10px #0006",
+            transition: "background 0.12s",
           }}
           title="Wallet öffnen"
         >
-          <Wallet size={27} style={{ marginRight: 2 }} />
+          <Wallet size={26} />
         </button>
       </div>
 
-      <div style={{ maxWidth: 450, margin: "0 auto", paddingTop: 90 }}>
-        <h1
+      <div
+        style={{
+          maxWidth: 630,
+          margin: "0 auto",
+          padding: "0 10px",
+          paddingTop: 74,
+          paddingBottom: 42,
+        }}
+      >
+        {/* User Header */}
+        <div
           style={{
-            color: "#fff",
-            fontSize: 29,
-            fontWeight: 900,
-            marginBottom: 25,
-            textAlign: "center",
-            letterSpacing: 1,
+            display: "flex",
+            gap: 18,
+            alignItems: "center",
+            marginBottom: 15,
+            flexWrap: "wrap",
           }}
         >
-          Willkommen, {user.username}!
-        </h1>
-
-        {showBroadcast && (
           <div
             style={{
-              background: "#23262e",
-              color: "#38bdf8",
-              borderRadius: 12,
-              padding: 15,
-              fontSize: 17,
-              marginBottom: 22,
-              textAlign: "center",
-              fontWeight: 700,
+              background:
+                "linear-gradient(135deg,#38bdf8cc 60%,#a3e63577 100%)",
+              borderRadius: "50%",
+              width: 56,
+              height: 56,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 900,
+              fontSize: 26,
+              color: "#fff",
+              boxShadow: "0 3px 17px #38bdf822",
+              userSelect: "none",
             }}
           >
-            {<Broadcasts broadcasts={broadcasts} onClose={removeBroadcast} />}
+            {user.username?.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div
+              style={{
+                fontSize: 19,
+                fontWeight: 900,
+                color: "#fff",
+                letterSpacing: 1,
+              }}
+            >
+              Willkommen, {user.username}
+            </div>
+            <div
+              style={{
+                color: "#a3e635",
+                fontWeight: 700,
+                fontSize: 15.5,
+                marginTop: 2,
+              }}
+            >
+              Guthaben:{" "}
+              <span style={{ color: "#fff", fontWeight: 900 }}>
+                {user.guthaben?.toFixed(2) ?? "0.00"} €
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Aktiver Pass als horizontale "Card" */}
+        {aktiverPass && (
+          <div
+            style={{
+              background: "linear-gradient(105deg,#24292e 80%,#a3e63533 100%)",
+              borderRadius: 13,
+              padding: "13px 16px 11px 16px",
+              boxShadow: "0 4px 13px #a3e63533, 0 2px 8px #38bdf822",
+              marginBottom: 15,
+              color: "#fff",
+              fontSize: 14.2,
+              border: "2px solid #a3e63533",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <Ticket size={27} style={{ color: "#a3e635", marginRight: 7 }} />
+            <div style={{ flex: 1, minWidth: 130 }}>
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: 15.5,
+                  color: "#a3e635",
+                  marginBottom: 1,
+                }}
+              >
+                {aktiverPass.name}
+              </div>
+              <div
+                style={{ color: "#38bdf8", fontWeight: 700, fontSize: 13.5 }}
+              >
+                {aktiverPass.rabatt}% Rabatt&nbsp; • &nbsp;
+                <span style={{ color: "#a3e635", fontWeight: 900 }}>
+                  {msToDHM(aktiverPass.gültigBis - Date.now())}
+                </span>{" "}
+                gültig
+              </div>
+              <div style={{ color: "#fff", fontSize: 13.2, marginTop: 2 }}>
+                Max:{" "}
+                <span style={{ color: "#38bdf8", fontWeight: 700 }}>
+                  {(aktiverPass.maxRabatt ?? 0).toFixed(2)} €
+                </span>
+                {" | "}Gespart:{" "}
+                <span style={{ color: "#a3e635", fontWeight: 700 }}>
+                  {gespart.toFixed(2)} €
+                </span>
+                {" | "}Übrig:{" "}
+                <span style={{ color: "#a3e635", fontWeight: 900 }}>
+                  {rabattLimit.toFixed(2)} €
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <button
-            onClick={onGotoMenu}
-            style={{
-              width: "100%",
-              background: "#a3e635",
-              color: "#18181b",
-              fontWeight: 900,
-              border: 0,
-              borderRadius: 11,
-              fontSize: 21,
-              padding: "18px 0",
-              cursor: "pointer",
-              marginBottom: 3,
-            }}
-          >
-            🛒 Menü
-          </button>
-          <button
-            onClick={onGotoOrders}
-            style={{
-              width: "100%",
-              background: "#38bdf8",
-              color: "#18181b",
-              fontWeight: 900,
-              border: 0,
-              borderRadius: 11,
-              fontSize: 21,
-              padding: "18px 0",
-              cursor: "pointer",
-              marginBottom: 3,
-            }}
-          >
-            📦 Meine Bestellungen
-          </button>
-          {(user.rolle === "admin" || user.role === "admin") && (
-            <button
-              onClick={onGotoAdmin}
+        {/* Broadcast-Karten animiert */}
+        <AnimatePresence>
+          {broadcasts.map((b, i) => (
+            <motion.div
+              key={b.id}
+              initial={{ x: 60, opacity: 0, scale: 0.92 }}
+              animate={{
+                x: 0,
+                opacity: 1,
+                scale: 1,
+                background:
+                  i % 2 === 0
+                    ? [
+                        "linear-gradient(93deg,#38bdf8dd 65%,#a3e63544 100%)",
+                        "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
+                        "linear-gradient(93deg,#38bdf8dd 65%,#a3e63544 100%)",
+                      ]
+                    : [
+                        "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
+                        "linear-gradient(93deg,#38bdf8dd 65%,#a3e63544 100%)",
+                        "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
+                      ],
+              }}
+              exit={{ x: 55, opacity: 0, scale: 0.85 }}
+              transition={{
+                duration: 0.35,
+                type: "spring",
+                background: {
+                  repeat: Infinity,
+                  duration: 4.4,
+                  ease: "linear",
+                },
+              }}
               style={{
-                width: "100%",
-                background: "#18181b",
+                borderRadius: 12,
+                padding: "10px 15px",
+                fontSize: 15.5,
+                fontWeight: 700,
+                marginBottom: 9,
+                boxShadow: "0 1.5px 8px #23262e44",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
                 color: "#fff",
-                fontWeight: 900,
-                border: "2px solid #23262e",
-                borderRadius: 11,
-                fontSize: 20,
-                padding: "16px 0",
-                cursor: "pointer",
-                marginBottom: 3,
               }}
             >
-              ⚙️ Admin Panel
-            </button>
-          )}
-          {(user.rolle === "admin" || user.role === "kurier") && (
+              <span style={{ flex: 1 }}>{b.text}</span>
+              <button
+                onClick={() => removeBroadcast(b.id)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 19,
+                  fontWeight: 800,
+                  marginLeft: 15,
+                  cursor: "pointer",
+                  lineHeight: "1.3",
+                  transition: "color 0.14s",
+                  opacity: 0.84,
+                }}
+                aria-label="Schließen"
+              >
+                ×
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* Grid-Layout für Aktionen! */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 13,
+            marginTop: 7,
+          }}
+        >
+          {actionGrid.map((a) => (
             <button
-              onClick={onGotoKurier}
+              key={a.id}
+              onClick={
+                a.action === "onGotoMenu"
+                  ? onGotoMenu
+                  : a.action === "onGotoOrders"
+                  ? onGotoOrders
+                  : a.action === "onGotoAdmin"
+                  ? onGotoAdmin
+                  : a.action === "onGotoKurier"
+                  ? onGotoKurier
+                  : a.action === "onGotoPass"
+                  ? onGotoPass
+                  : a.action === "onBuyCryptoClick"
+                  ? onBuyCryptoClick
+                  : a.action === "onGotoLotto"
+                  ? onGotoLotto
+                  : a.action === "onLogout"
+                  ? onLogout
+                  : undefined
+              }
               style={{
-                width: "100%",
-                background: "#18181b",
-                color: "#fff",
-                fontWeight: 900,
-                border: "2px solid #23262e",
-                borderRadius: 11,
-                fontSize: 20,
-                padding: "16px 0",
+                background: a.bg,
+                color: a.color,
+                border: a.border || "none",
+                borderRadius: 14,
+                boxShadow: "0 2px 10px #0001",
+                fontWeight: 800,
+                fontSize: 15.5,
+                padding: "19px 0 11px 0",
                 cursor: "pointer",
-                marginBottom: 3,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 9,
+                transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
+                minHeight: 74,
+                position: "relative",
+                userSelect: "none",
               }}
             >
-              🛵 Kurier Panel
+              <div>{a.icon}</div>
+              <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
             </button>
-          )}
-          {/* NEU: Krypto kaufen Button */}
-          <button
-            onClick={onBuyCryptoClick}
-            style={{
-              width: "100%",
-              background: "#18181b",
-              color: "#a3e635",
-              fontWeight: 900,
-              border: "2px solid #a3e635",
-              borderRadius: 11,
-              fontSize: 20,
-              padding: "16px 0",
-              cursor: "pointer",
-              marginBottom: 3,
-            }}
-          >
-            💰 Krypto kaufen
-          </button>
-          <button
-            onClick={onLogout}
-            style={{
-              width: "100%",
-              background: "#f87171",
-              color: "#fff",
-              fontWeight: 900,
-              border: 0,
-              borderRadius: 11,
-              fontSize: 19,
-              padding: "14px 0",
-              cursor: "pointer",
-            }}
-          >
-            Abmelden
-          </button>
+          ))}
         </div>
       </div>
     </div>
