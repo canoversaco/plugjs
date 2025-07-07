@@ -14,16 +14,21 @@ import { Icon, Style } from "ol/style";
 import Geocoder from "ol-geocoder";
 import "ol-geocoder/dist/ol-geocoder.min.css";
 
-const BTC_ADDR = "bc1q8r428cum3f0hc00900wuktz6lffna20qh3z6l0"; // <- Deine Admin Adresse
+const BTC_ADDR = "bc1q8r428cum3f0hc00900wuktz6lffna20qh3z6l0";
+
+function msToDHM(ms) {
+  const t = Math.max(0, ms);
+  const days = Math.floor(t / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((t / (1000 * 60 * 60)) % 24);
+  const mins = Math.floor((t / (1000 * 60)) % 60);
+  return `${days} Tag${days === 1 ? "" : "e"}, ${hours} Std, ${mins} Min`;
+}
 
 export default function OrderView({
   warenkorb,
   produkte,
   onBestellungAbsenden,
-  gesamt,
-  rabatt,
-  endpreis,
-  user, // <-- User reinreichen (so kannst du Guthaben anzeigen!)
+  user,
   onGoBack,
 }) {
   const mapRef = useRef();
@@ -34,7 +39,6 @@ export default function OrderView({
   const [error, setError] = useState("");
   const [btcKurs, setBtcKurs] = useState(null);
 
-  // Hole BTC Kurs von CoinGecko
   useEffect(() => {
     async function fetchKurs() {
       try {
@@ -50,20 +54,43 @@ export default function OrderView({
     fetchKurs();
   }, []);
 
-  // Warenkorbpreis berechnen
   const warenkorbPreis = warenkorb.reduce((sum, item) => {
     const p = produkte.find((pr) => pr.id === item.produktId);
     return sum + (p?.preis || 0) * item.menge;
   }, 0);
 
-  // Rabattberechnung NUR bei Krypto
-  let _rabatt = 0;
-  if (orderZahlung === "krypto") {
-    if (warenkorbPreis <= 250) _rabatt = warenkorbPreis * 0.05;
-    else _rabatt = warenkorbPreis * 0.1;
+  // --- Pass Anzeige / Berechnung ---
+  let aktiverPass = null;
+  if (user?.pass && user.pass.gültigBis > Date.now()) aktiverPass = user.pass;
+
+  let passRabatt = 0;
+  let passRabattMax = 0;
+  let passRabattÜbrig = 0;
+
+  if (aktiverPass && orderZahlung === "krypto") {
+    passRabattMax = aktiverPass.maxRabatt ?? 0;
+    const schonGespart = aktiverPass.gespartAktuell ?? 0;
+    passRabatt =
+      Math.round(((warenkorbPreis * (aktiverPass.rabatt ?? 0)) / 100) * 100) /
+      100;
+    passRabattÜbrig = Math.max(0, passRabattMax - schonGespart);
+    passRabatt = Math.min(passRabatt, passRabattÜbrig);
   }
 
-  const _gesamt = typeof gesamt === "number" ? gesamt : warenkorbPreis;
+  // Rabattberechnung NUR bei Krypto & aktivem Pass
+  let _rabatt = 0;
+  if (orderZahlung === "krypto") {
+    if (aktiverPass) {
+      _rabatt = passRabatt;
+    } else {
+      // Fallback: Standard-Krypto-Rabatt (falls kein Pass)
+      if (warenkorbPreis <= 250) _rabatt = warenkorbPreis * 0.05;
+      else _rabatt = warenkorbPreis * 0.1;
+    }
+  }
+
+  _rabatt = Math.round(_rabatt * 100) / 100;
+  const _gesamt = warenkorbPreis;
   const _endpreis = Math.max(_gesamt - _rabatt, 0);
 
   const kryptoBetrag =
@@ -79,7 +106,6 @@ export default function OrderView({
   const notEnoughGuthaben =
     orderZahlung === "krypto" && user && (user.guthaben || 0) < _endpreis;
 
-  // OpenLayers Map initialisieren
   useEffect(() => {
     const initialCoord = fromLonLat([7, 51.5]);
     const markerSource = new VectorSource();
@@ -109,7 +135,6 @@ export default function OrderView({
       }),
     });
 
-    // Klick auf die Karte: Marker setzen
     map.on("click", (evt) => {
       markerSource.clear();
       const coord = evt.coordinate;
@@ -121,7 +146,6 @@ export default function OrderView({
       markerSource.addFeature(marker);
     });
 
-    // Geocoder hinzufügen
     const geocoder = new Geocoder("nominatim", {
       provider: "osm",
       lang: "de-DE",
@@ -147,14 +171,12 @@ export default function OrderView({
     return () => map.setTarget(undefined);
   }, []);
 
-  // Marker-Koordinaten für Google Maps Link
   const getLatLon = () => {
     if (!markerCoord) return null;
     const [lon, lat] = toLonLat(markerCoord);
     return { lat, lon };
   };
 
-  // Bestellung abschließen
   const handleComplete = () => {
     setError("");
     const ll = getLatLon();
@@ -225,15 +247,84 @@ export default function OrderView({
         })}
       </div>
 
+      {/* --- Pass Anzeige hübsch --- */}
+      {aktiverPass && (
+        <div
+          style={{
+            background: "linear-gradient(113deg,#2b3139 55%,#a3e63544 100%)",
+            color: "#fff",
+            borderRadius: 14,
+            padding: 16,
+            marginBottom: 14,
+            border: "2px solid #a3e63544",
+            boxShadow: "0 2px 16px #a3e63522, 0 1.5px 10px #0002",
+            fontSize: 16,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 22,
+              fontWeight: 900,
+              color: "#a3e635",
+              marginRight: 6,
+            }}
+          >
+            {aktiverPass.name}
+          </span>
+          <span style={{ color: "#38bdf8", fontWeight: 700 }}>
+            {aktiverPass.rabatt}% Rabatt
+          </span>
+          <br />
+          <span style={{ fontSize: 15.2, color: "#e5e7eb", fontWeight: 600 }}>
+            Max. Rabatt in diesem Zeitraum:{" "}
+            <b>{(aktiverPass.maxRabatt ?? 0).toFixed(2)} €</b>
+            {typeof aktiverPass.gespartAktuell === "number" && (
+              <>
+                {" "}
+                | Bereits gespart:{" "}
+                <span style={{ color: "#38bdf8" }}>
+                  {(aktiverPass.gespartAktuell ?? 0).toFixed(2)} €
+                </span>
+                {" | "}
+                <span style={{ color: "#a3e635", fontWeight: 700 }}>
+                  Übrig:{" "}
+                  {(
+                    (aktiverPass.maxRabatt ?? 0) -
+                    (aktiverPass.gespartAktuell ?? 0)
+                  ).toFixed(2)}{" "}
+                  €
+                </span>
+              </>
+            )}
+          </span>
+          <br />
+          <span style={{ color: "#a1a1aa", fontSize: 14, fontWeight: 600 }}>
+            Gültig noch:{" "}
+            <span style={{ color: "#a3e635", fontWeight: 800 }}>
+              {msToDHM(aktiverPass.gültigBis - Date.now())}
+            </span>
+          </span>
+        </div>
+      )}
+
       {/* Rabatt Anzeige falls vorhanden */}
       {orderZahlung === "krypto" && _rabatt > 0 && (
         <div style={{ marginBottom: 8, color: "#a3e635", fontWeight: 700 }}>
-          Krypto-Rabatt: –{_rabatt.toFixed(2)} €
+          Rabatt für diese Bestellung: –{_rabatt.toFixed(2)} €
           <br />
           <span style={{ fontSize: 14, color: "#b4ff38" }}>
-            {warenkorbPreis <= 250
-              ? "5% Rabatt (bis 250 €)"
-              : "10% Rabatt (ab 250 €)"}
+            {aktiverPass
+              ? `${aktiverPass.rabatt}% Pass-Rabatt (max. ${(
+                  aktiverPass.maxRabatt ?? 0
+                ).toFixed(2)} € / übrig: ${(
+                  (aktiverPass.maxRabatt ?? 0) -
+                  (aktiverPass.gespartAktuell ?? 0)
+                ).toFixed(2)} €)`
+              : warenkorbPreis <= 250
+              ? "5% Krypto-Rabatt (bis 250 €)"
+              : "10% Krypto-Rabatt (ab 250 €)"}
           </span>
         </div>
       )}
@@ -275,7 +366,6 @@ export default function OrderView({
         </button>
       </div>
 
-      {/* Krypto-Hinweis */}
       {orderZahlung === "krypto" && (
         <div
           style={{
