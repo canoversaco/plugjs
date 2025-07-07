@@ -7,7 +7,7 @@ import {
   addDoc,
   doc,
   updateDoc,
-  Timestamp,
+  getDoc,
 } from "firebase/firestore";
 import LoginView from "./components/LoginView";
 import HomeView from "./components/HomeView";
@@ -18,20 +18,16 @@ import MenuView from "./components/MenuView";
 import OrderView from "./components/OrderView";
 import ChatWindow from "./components/ChatWindow";
 import WalletModal from "./components/WalletModal";
+import PassPanel from "./components/PassPanel";
+import LottoView from "./components/LottoView"; // <--- NEU
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
-import { MoonPayProvider } from "@moonpay/moonpay-react";
-import { MoonPayBuyWidget } from "@moonpay/moonpay-react";
-// Zentrale BTC-Adresse! Nur hier ändern.
+
 const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 
-// BuyCryptoModal überall die zentrale Adresse verwenden!
 function BuyCryptoModal({ user, amount, btc, onClose }) {
-  const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
+  const ADMIN_BTC_ADDRESS = ADMIN_BTC_WALLET;
   const [copied, setCopied] = React.useState(false);
-  const moonpayUrl = `https://buy.moonpay.com?apiKey=pk_live_LKIScJ6CKR9aRwt7QRDSKR7krXAbk0u&currencyCode=btc&walletAddress=${ADMIN_BTC_ADDRESS}&baseCurrencyCode=eur${
-    amount ? `&baseCurrencyAmount=${amount}` : ""
-  }&enabledPaymentMethods=apple_pay,google_pay,sepa_bank_transfer,credit_debit_card`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(ADMIN_BTC_ADDRESS);
@@ -122,12 +118,11 @@ function BuyCryptoModal({ user, amount, btc, onClose }) {
           ⚠️ACHTUNG ⚠️
         </h2>
         <div>
-          {" "}
           Du musst in deiner Wallet (Symbol oben rechts) vorher den
           Einzahlungsbetrag eingeben und auf Einzahlen klicken, ansonsten kann
           deine Einzahlung nicht Zugeordnet werden und wird nicht als Guthaben
           gutgeschrieben! Nach 1 Bestätigung erhältst du das Guthaben
-          automatisch als EUR in deinem Wallet gutgeschrieben.{" "}
+          automatisch als EUR in deinem Wallet gutgeschrieben.
         </div>
         <br />
         <div style={{ marginBottom: 16, fontSize: 15.8 }}>
@@ -171,7 +166,6 @@ function BuyCryptoModal({ user, amount, btc, onClose }) {
             </b>
           </div>
         </div>
-
         <div style={{ marginBottom: 17 }}>
           <ol style={{ marginLeft: 22, color: "#e5e7eb", fontSize: 15.1 }}>
             <li style={{ marginBottom: 13 }}>
@@ -199,6 +193,27 @@ function BuyCryptoModal({ user, amount, btc, onClose }) {
               >
                 {ADMIN_BTC_ADDRESS}
               </span>
+              <button
+                onClick={handleCopy}
+                style={{
+                  background: copied ? "#22c55e" : "#23262e",
+                  color: copied ? "#fff" : "#38bdf8",
+                  border: 0,
+                  borderRadius: 7,
+                  fontWeight: 700,
+                  fontSize: 15.3,
+                  padding: "5px 13px",
+                  marginLeft: 13,
+                  marginBottom: 5,
+                  marginTop: 3,
+                  cursor: "pointer",
+                  transition: "background 0.13s",
+                  outline: "none",
+                  boxShadow: copied ? "0 0 0 2px #22c55e55" : "",
+                }}
+              >
+                {copied ? "✔️ Kopiert" : "Adresse kopieren"}
+              </button>
               {amount && btc && (
                 <div
                   style={{
@@ -296,11 +311,9 @@ export default class App extends React.Component {
       })
     );
 
-    // BTC Kurs laden
     const btcPrice = await fetchBtcPriceEUR();
     this.setState({ btcPrice });
 
-    // BTC Monitoring jede Minute
     this.depositInterval = setInterval(this.monitorDeposits, 60000);
     this.priceInterval = setInterval(async () => {
       const price = await fetchBtcPriceEUR();
@@ -388,7 +401,48 @@ export default class App extends React.Component {
     }));
   };
 
-  // Bezahlung mit Guthaben
+  handleBuyPass = async (pass) => {
+    const { user } = this.state;
+    if (!user) return;
+    const userRef = doc(db, "users", user.id);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.exists() ? userSnap.data() : {};
+
+    if (userData.pass && userData.pass.gültigBis > Date.now()) {
+      alert("Du hast bereits einen aktiven Pass!");
+      return;
+    }
+
+    if ((userData.guthaben || 0) < pass.preis) {
+      alert("Nicht genug Guthaben für diesen Pass!");
+      return;
+    }
+
+    const jetzt = Date.now();
+    const bis = jetzt + pass.laufzeit * 24 * 60 * 60 * 1000;
+    const neuesGuthaben = (userData.guthaben || 0) - pass.preis + pass.guthaben;
+
+    const passInfo = {
+      ...pass,
+      gekauftAm: jetzt,
+      gültigBis: bis,
+      gespartAktuell: 0,
+    };
+
+    await updateDoc(userRef, {
+      guthaben: neuesGuthaben,
+      pass: passInfo,
+    });
+
+    this.setState({
+      user: {
+        ...user,
+        guthaben: neuesGuthaben,
+        pass: passInfo,
+      },
+    });
+  };
+
   handleBestellungAbsenden = async (orderData) => {
     const { user, warenkorb, produkte } = this.state;
 
@@ -401,14 +455,9 @@ export default class App extends React.Component {
       await this.produktUpdaten(p.id, { bestand: p.bestand - item.menge });
     }
 
-    const endpreis = warenkorb.reduce((sum, item) => {
-      const p = produkte.find((pr) => pr.id === item.produktId);
-      return sum + (p?.preis || 0) * item.menge;
-    }, 0);
     const rabatt = orderData.rabatt ?? 0;
-    const zuZahlen = endpreis - rabatt;
+    const zuZahlen = orderData.endpreis ?? 0;
 
-    // Prüfen ob genug Guthaben
     if (
       orderData.zahlung === "krypto" &&
       (!user.guthaben || user.guthaben < zuZahlen)
@@ -417,10 +466,19 @@ export default class App extends React.Component {
       return;
     }
 
+    const aktiverPass =
+      user.pass && user.pass.gültigBis > Date.now() ? user.pass : null;
+
+    if (aktiverPass && rabatt > 0) {
+      await updateDoc(doc(db, "users", user.id), {
+        "pass.gespartAktuell": (aktiverPass.gespartAktuell ?? 0) + rabatt,
+      });
+    }
+
     await this.bestellungHinzufügen({
       kunde: user.username,
       warenkorb,
-      gesamt: endpreis,
+      gesamt: orderData.gesamt ?? 0,
       rabatt: rabatt,
       endpreis: zuZahlen,
       zahlung: orderData.zahlung ?? "bar",
@@ -428,7 +486,7 @@ export default class App extends React.Component {
         orderData.zahlung === "krypto" ? orderData.kryptoWaehrung : null,
       notiz: orderData.notiz ?? "",
       status: "offen",
-      treffpunkt: orderData.treffpunkt ?? null, // <--- HIER: Jetzt korrekt!
+      treffpunkt: orderData.treffpunkt ?? null,
       ts: Date.now(),
       chat: [],
     });
@@ -439,10 +497,16 @@ export default class App extends React.Component {
       });
     }
 
+    // User nach Rabatt-Update neu laden
+    let updatedUserSnap = await getDoc(doc(db, "users", user.id));
+    let updatedUser = {
+      ...user,
+      ...(updatedUserSnap.exists() ? updatedUserSnap.data() : {}),
+    };
+
     this.setState({ warenkorb: [], view: "meine" });
   };
 
-  // NEU: Für Wunschbetrag → BuyCryptoModal anzeigen & openDeposit setzen
   handleBuyCryptoClick = async (eur, btc) => {
     const { user } = this.state;
     if (!user || !eur || !btc) return;
@@ -480,7 +544,6 @@ export default class App extends React.Component {
       buyCryptoBtc,
     } = this.state;
 
-    // 1. CHAT zuerst prüfen!
     if (chatOrder)
       return (
         <ChatWindow
@@ -490,7 +553,6 @@ export default class App extends React.Component {
         />
       );
 
-    // WALLET MODAL
     if (walletOpen)
       return (
         <WalletModal
@@ -501,7 +563,6 @@ export default class App extends React.Component {
         />
       );
 
-    // KRYPTOKAUF MODAL
     if (buyCryptoModalOpen)
       return (
         <BuyCryptoModal
@@ -528,6 +589,8 @@ export default class App extends React.Component {
           onGotoOrders={() => this.setState({ view: "meine" })}
           onGotoAdmin={() => this.setState({ view: "admin" })}
           onGotoKurier={() => this.setState({ view: "kurier" })}
+          onGotoPass={() => this.setState({ view: "pässe" })}
+          onGotoLotto={() => this.setState({ view: "lotto" })} // <---- HIER
           onLogout={this.handleLogout}
           onWalletClick={() => this.setState({ walletOpen: true })}
           onBuyCryptoClick={() =>
@@ -536,6 +599,14 @@ export default class App extends React.Component {
           broadcast={broadcast}
           showBroadcast={showBroadcast}
           closeBroadcast={() => this.setState({ showBroadcast: false })}
+        />
+      );
+    if (view === "lotto" && user)
+      return (
+        <LottoView
+          user={user}
+          users={users}
+          onGoBack={() => this.setState({ view: "home" })}
         />
       );
     if (view === "menü" && user)
@@ -578,6 +649,14 @@ export default class App extends React.Component {
           produkte={produkte}
           onGoBack={() => this.setState({ view: "home" })}
           onChat={(order) => this.setState({ chatOrder: order })}
+        />
+      );
+    if (view === "pässe" && user)
+      return (
+        <PassPanel
+          user={user}
+          onGoBack={() => this.setState({ view: "home" })}
+          onBuyPass={this.handleBuyPass}
         />
       );
     if (view === "admin" && user)
