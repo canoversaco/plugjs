@@ -50,9 +50,29 @@ export default class LoginView extends React.Component {
             flexDirection: "column",
             alignItems: "center",
             gap: 0,
-            animation: "fadeIn 0.6s cubic-bezier(.43,.13,.23,1.12)"
+            animation: "fadeIn 0.6s cubic-bezier(.43,.13,.23,1.12)",
           }}
         >
+          {/* Wartungsmodus Info */}
+          <div
+            style={{
+              backgroundColor: "#fbbf24",
+              color: "#1a202c",
+              fontWeight: "700",
+              padding: "10px 16px",
+              borderRadius: 10,
+              marginBottom: 18,
+              textAlign: "center",
+              boxShadow: "0 0 10px #fbbf2433",
+              fontSize: 14,
+              lineHeight: "1.3em",
+            }}
+          >
+            ⚠️ Die App befindet sich momentan im Wartungsmodus. Es können
+            vereinzelt Probleme auftreten. Bitte installiere die App neu, um
+            Fehler zu vermeiden.
+          </div>
+
           <div
             style={{
               fontSize: 50,
@@ -60,7 +80,7 @@ export default class LoginView extends React.Component {
               filter: "drop-shadow(0 6px 18px #e3ff6459)",
               textShadow: "0 1px 22px #e3ff6459",
               userSelect: "none",
-              animation: "popUp .7s"
+              animation: "popUp .7s",
             }}
           >
             🪙
@@ -90,7 +110,8 @@ export default class LoginView extends React.Component {
               opacity: 0.98,
             }}
           >
-            Willkommen zurück!<br />
+            Willkommen zurück!
+            <br />
             Bitte melde dich an.
           </div>
 
@@ -118,8 +139,8 @@ export default class LoginView extends React.Component {
                   : "0 0 0 0px transparent",
               letterSpacing: 0.05,
             }}
-            onFocus={e => e.target.style.border = "2px solid #38bdf8"}
-            onBlur={e => e.target.style.border = "2px solid #18181b"}
+            onFocus={(e) => (e.target.style.border = "2px solid #38bdf8")}
+            onBlur={(e) => (e.target.style.border = "2px solid #18181b")}
             onKeyDown={(e) => e.key === "Enter" && this.handleLogin()}
             autoFocus
             autoComplete="username"
@@ -151,8 +172,8 @@ export default class LoginView extends React.Component {
                     : "0 0 0 0px transparent",
                 letterSpacing: 1.1,
               }}
-              onFocus={e => e.target.style.border = "2px solid #a3e635"}
-              onBlur={e => e.target.style.border = "2px solid #18181b"}
+              onFocus={(e) => (e.target.style.border = "2px solid #a3e635")}
+              onBlur={(e) => (e.target.style.border = "2px solid #18181b")}
               onKeyDown={(e) => e.key === "Enter" && this.handleLogin()}
               autoComplete="current-password"
               spellCheck={false}
@@ -172,7 +193,7 @@ export default class LoginView extends React.Component {
                 zIndex: 10,
               }}
               title={pwShow ? "Verbergen" : "Anzeigen"}
-              onClick={() => this.setState(s => ({ pwShow: !s.pwShow }))}
+              onClick={() => this.setState((s) => ({ pwShow: !s.pwShow }))}
             >
               {pwShow ? "🙈" : "👁️"}
             </div>
@@ -193,10 +214,10 @@ export default class LoginView extends React.Component {
               marginTop: 2,
               boxShadow: "0 2px 22px #e3ff6436",
               letterSpacing: 0.3,
-              cursor: (!username || !password) ? "not-allowed" : "pointer",
-              filter: (!username || !password) ? "brightness(0.7)" : undefined,
-              opacity: (!username || !password) ? 0.7 : 1,
-              transition: "filter 0.13s, box-shadow 0.13s"
+              cursor: !username || !password ? "not-allowed" : "pointer",
+              filter: !username || !password ? "brightness(0.7)" : undefined,
+              opacity: !username || !password ? 0.7 : 1,
+              transition: "filter 0.13s, box-shadow 0.13s",
             }}
             disabled={!username || !password}
           >
