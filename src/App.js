@@ -19,11 +19,35 @@ import OrderView from "./components/OrderView";
 import ChatWindow from "./components/ChatWindow";
 import WalletModal from "./components/WalletModal";
 import PassPanel from "./components/PassPanel";
-import LottoView from "./components/LottoView"; // <--- NEU
+import LottoView from "./components/LottoView";
+import MysteryBoxUserView from "./components/MysteryBoxUserView";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 
 const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
+
+class ErrorBoundary extends React.Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error in component:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ color: "red", padding: 20 }}>
+          Ein Fehler ist aufgetreten
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function BuyCryptoModal({ user, amount, btc, onClose }) {
   const ADMIN_BTC_ADDRESS = ADMIN_BTC_WALLET;
@@ -273,9 +297,24 @@ export default class App extends React.Component {
     buyCryptoModalOpen: false,
     buyCryptoAmount: null,
     buyCryptoBtc: null,
+    userListener: null,
+    mysteryBoxes: [], // Neu hinzugefügt
   };
 
   unsub = [];
+
+  setUserLiveListener = (user) => {
+    if (this.state.userListener) {
+      this.state.userListener();
+    }
+    if (!user || !user.id) return;
+    const unsub = onSnapshot(doc(db, "users", user.id), (snap) => {
+      if (snap.exists()) {
+        this.setState({ user: { ...snap.data(), id: user.id } });
+      }
+    });
+    this.setState({ userListener: unsub });
+  };
 
   async componentDidMount() {
     this.unsub.push(
@@ -285,6 +324,7 @@ export default class App extends React.Component {
         });
       })
     );
+
     this.unsub.push(
       onSnapshot(collection(db, "orders"), (snap) => {
         this.setState({
@@ -292,6 +332,7 @@ export default class App extends React.Component {
         });
       })
     );
+
     this.unsub.push(
       onSnapshot(collection(db, "users"), (snap) => {
         this.setState({
@@ -299,6 +340,7 @@ export default class App extends React.Component {
         });
       })
     );
+
     this.unsub.push(
       onSnapshot(doc(db, "settings", "main"), (snap) => {
         const data = snap.data();
@@ -308,6 +350,21 @@ export default class App extends React.Component {
             showBroadcast: true,
           });
         }
+      })
+    );
+
+    // Neu: Mystery Boxes live abonnieren
+    this.unsub.push(
+      onSnapshot(collection(db, "mysteryBoxes"), (snap) => {
+        const boxes = snap.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            produkte: Array.isArray(data.produkte) ? data.produkte : [],
+          };
+        });
+        this.setState({ mysteryBoxes: boxes });
       })
     );
 
@@ -323,6 +380,7 @@ export default class App extends React.Component {
 
   componentWillUnmount() {
     this.unsub.forEach((f) => f && f());
+    if (this.state.userListener) this.state.userListener();
     clearInterval(this.depositInterval);
     clearInterval(this.priceInterval);
   }
@@ -376,10 +434,20 @@ export default class App extends React.Component {
     await addDoc(collection(db, "orders"), order);
   };
 
-  handleLogin = (user) => this.setState({ user, view: "home" });
+  handleLogin = (user) => {
+    this.setUserLiveListener(user);
+    this.setState({ user, view: "home" });
+  };
 
-  handleLogout = () =>
-    this.setState({ user: null, view: "login", warenkorb: [] });
+  handleLogout = () => {
+    if (this.state.userListener) this.state.userListener();
+    this.setState({
+      user: null,
+      view: "login",
+      warenkorb: [],
+      userListener: null,
+    });
+  };
 
   handleAddToCart = (produktId) => {
     this.setState((prev) => {
@@ -432,14 +500,6 @@ export default class App extends React.Component {
     await updateDoc(userRef, {
       guthaben: neuesGuthaben,
       pass: passInfo,
-    });
-
-    this.setState({
-      user: {
-        ...user,
-        guthaben: neuesGuthaben,
-        pass: passInfo,
-      },
     });
   };
 
@@ -497,13 +557,6 @@ export default class App extends React.Component {
       });
     }
 
-    // User nach Rabatt-Update neu laden
-    let updatedUserSnap = await getDoc(doc(db, "users", user.id));
-    let updatedUser = {
-      ...user,
-      ...(updatedUserSnap.exists() ? updatedUserSnap.data() : {}),
-    };
-
     this.setState({ warenkorb: [], view: "meine" });
   };
 
@@ -542,6 +595,7 @@ export default class App extends React.Component {
       buyCryptoModalOpen,
       buyCryptoAmount,
       buyCryptoBtc,
+      mysteryBoxes,
     } = this.state;
 
     if (chatOrder)
@@ -580,6 +634,7 @@ export default class App extends React.Component {
 
     if (view === "login")
       return <LoginView users={users} onLogin={this.handleLogin} />;
+
     if (view === "home" && user)
       return (
         <HomeView
@@ -590,7 +645,8 @@ export default class App extends React.Component {
           onGotoAdmin={() => this.setState({ view: "admin" })}
           onGotoKurier={() => this.setState({ view: "kurier" })}
           onGotoPass={() => this.setState({ view: "pässe" })}
-          onGotoLotto={() => this.setState({ view: "lotto" })} // <---- HIER
+          onGotoLotto={() => this.setState({ view: "lotto" })}
+          onGotoMysteryBoxen={() => this.setState({ view: "boxen" })}
           onLogout={this.handleLogout}
           onWalletClick={() => this.setState({ walletOpen: true })}
           onBuyCryptoClick={() =>
@@ -601,6 +657,7 @@ export default class App extends React.Component {
           closeBroadcast={() => this.setState({ showBroadcast: false })}
         />
       );
+
     if (view === "lotto" && user)
       return (
         <LottoView
@@ -609,6 +666,7 @@ export default class App extends React.Component {
           onGoBack={() => this.setState({ view: "home" })}
         />
       );
+
     if (view === "menü" && user)
       return (
         <MenuView
@@ -620,6 +678,7 @@ export default class App extends React.Component {
           onGoBack={() => this.setState({ view: "home" })}
         />
       );
+
     if (view === "order" && user)
       return (
         <OrderView
@@ -631,6 +690,7 @@ export default class App extends React.Component {
           user={user}
         />
       );
+
     if (view === "meine" && user)
       return (
         <KundeView
@@ -641,6 +701,7 @@ export default class App extends React.Component {
           onChat={(order) => this.setState({ chatOrder: order })}
         />
       );
+
     if (view === "kurier" && user)
       return (
         <KurierView
@@ -651,6 +712,7 @@ export default class App extends React.Component {
           onChat={(order) => this.setState({ chatOrder: order })}
         />
       );
+
     if (view === "pässe" && user)
       return (
         <PassPanel
@@ -659,6 +721,22 @@ export default class App extends React.Component {
           onBuyPass={this.handleBuyPass}
         />
       );
+
+    if (view === "boxen" && user) {
+      if (!user.id || user.guthaben === undefined) {
+        console.error("User-Objekt ist nicht vollständig:", user);
+        return <div>Fehler: Benutzerdaten unvollständig</div>;
+      }
+      return (
+        <ErrorBoundary>
+          <MysteryBoxUserView
+            user={user}
+            onGoBack={() => this.setState({ view: "home" })}
+          />
+        </ErrorBoundary>
+      );
+    }
+
     if (view === "admin" && user)
       return (
         <AdminView
@@ -672,6 +750,7 @@ export default class App extends React.Component {
           onProduktUpdate={this.produktUpdaten}
         />
       );
+
     return <div>Unbekannte Ansicht</div>;
   }
 }
