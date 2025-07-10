@@ -28,6 +28,7 @@ export default function WalletPage({
   const [btcPrice, setBtcPrice] = useState(propBtcPrice || null);
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState("");
+  const [isHoveringBack, setIsHoveringBack] = useState(false);
 
   const userBtc =
     btcPrice && user?.guthaben
@@ -44,15 +45,14 @@ export default function WalletPage({
     };
   }, [propBtcPrice]);
 
-  // Nur positive Zahlen als Einzahlungsbetrag akzeptieren
   function handleEurChange(e) {
-    const value = e.target.value.replace(",", "."); // falls Komma statt Punkt
+    const value = e.target.value.replace(",", ".");
     if (value === "" || isNaN(value)) {
       setEur("");
       setBtc("");
       return;
     }
-    if (parseFloat(value) < 0) return; // kein Minus
+    if (parseFloat(value) < 0) return;
     setEur(value);
   }
 
@@ -98,7 +98,7 @@ export default function WalletPage({
         padding: 0,
       }}
     >
-      {/* HEADER + ZURÜCK-BUTTON */}
+      {/* Verbesserter Header mit animiertem Zurück-Button */}
       <header
         style={{
           width: "100%",
@@ -106,6 +106,7 @@ export default function WalletPage({
           background: "linear-gradient(94deg,#1b2330 90%,#1e293b 120%)",
           boxShadow: "0 8px 24px #0007",
           borderBottom: "1.5px solid #23262e33",
+          position: "relative",
         }}
       >
         <div
@@ -117,32 +118,48 @@ export default function WalletPage({
             flexDirection: "column",
             alignItems: "center",
             gap: 10,
-            position: "relative",
           }}
         >
+          {/* Verbesserter Zurück-Button mit Animation */}
           {onGoBack && (
             <button
               onClick={onGoBack}
+              onMouseEnter={() => setIsHoveringBack(true)}
+              onMouseLeave={() => setIsHoveringBack(false)}
               style={{
                 position: "absolute",
-                left: 0,
-                top: 0,
+                left: 15,
+                top: 20,
                 background: "none",
                 border: 0,
-                color: "#e3ff64",
+                color: isHoveringBack ? "#38bdf8" : "#e3ff64",
                 fontWeight: 900,
                 fontSize: 27,
-                padding: 0,
+                padding: "5px 10px",
                 cursor: "pointer",
                 lineHeight: 1,
                 zIndex: 2,
-                transition: "color 0.17s",
+                transition: "all 0.2s ease",
+                borderRadius: 8,
+                transform: isHoveringBack ? "translateX(-5px)" : "translateX(0)",
               }}
-              title="Zurück"
+              title="Zurück zur Startseite"
             >
               ←
+              <span 
+                style={{
+                  fontSize: 14,
+                  marginLeft: 5,
+                  opacity: isHoveringBack ? 1 : 0,
+                  transition: "opacity 0.2s ease",
+                  verticalAlign: "middle",
+                }}
+              >
+                Home
+              </span>
             </button>
           )}
+
           <div
             style={{
               fontWeight: 800,
