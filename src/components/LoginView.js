@@ -68,7 +68,8 @@ export default class LoginView extends React.Component {
               lineHeight: "1.3em",
             }}
           >
-            ⚠️ Die App befindet sich nicht mehr im Wartungsmodus und ist nun wieder voll Funktionsfähig. Viel Spaß beim bestellen und mit dem neuen Update!
+        //    ⚠️ Die App befindet sich nicht mehr im Wartungsmodus und ist nun wieder voll Funktionsfähig. Viel Spaß beim bestellen und mit dem neuen Update!
+            Es können vereinzelt Probleme bei der Anmeldung auftreten. Falls Probleme bestehen, klicke <a href="185.198.234.220" >hier</a> und melde dich da an.
           </div>
 
           <div
