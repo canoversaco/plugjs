@@ -8,6 +8,7 @@ import {
   UserCog,
   Truck,
   Bitcoin,
+  Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -50,16 +51,27 @@ const ACTIONS = [
   {
     id: "lotto",
     label: "Lotto",
-    icon: <Ticket size={25} style={{ color: "#38bdf8" }} />, // Optional: 🎰 oder SlotMachine Icon
+    icon: "🎰",
     color: "#fff",
     bg: "linear-gradient(125deg,#38bdf8 70%,#a3e635bb 100%)",
     border: "2px solid #38bdf8",
     action: "onGotoLotto",
   },
+  // --- MYSTERY BOXEN BUTTON (NEU) ---
+  {
+    id: "mystery",
+    label: "Mystery Boxen",
+    icon: <Gift size={27} />,
+    color: "#fff",
+    bg: "linear-gradient(120deg,#f59e42 65%,#a3e635 120%)",
+    border: "2px solid #f59e42",
+    action: "onGotoMysteryBoxen",
+    animate: true,
+  },
   // -------------------------
   {
     id: "crypto",
-    label: "Krypto kaufen",
+    label: "Guthaben aufladen",
     icon: <Bitcoin size={25} />,
     color: "#a3e635",
     bg: "linear-gradient(127deg,#18181b 65%,#a3e63555 100%)",
@@ -100,15 +112,15 @@ const ACTIONS = [
 const DEMO_BROADCASTS = [
   {
     id: 1,
-    text: "⚡ Krypto Update! Jetzt 5 € Krypto-Guthaben sichern im Wallet (oben rechts).",
+    text: "🛒 Schaue dir die neuen Wochen-/Monatspässe an und fange an zu sparen!",
   },
   {
     id: 2,
-    text: "🔴 Mit Bitcoin zahlen und automatisch 5-10% sparen!",
+    text: "🔴 Nimm an der wöchentlichen Lotto Ziehung teil!",
   },
   {
     id: 3,
-    text: "🛒 Neue Produkte und frische Preise ab sofort im Menü!",
+    text: "⚡ Krypto Update! Jetzt 5€ Krypto-Guthaben sichern im Wallet (oben rechts).",
   },
 ];
 
@@ -125,7 +137,8 @@ export default function HomeView({
   closeBroadcast,
   onWalletClick,
   onBuyCryptoClick,
-  onGotoLotto, // NEU!
+  onGotoLotto,
+  onGotoMysteryBoxen, // <-- NEU: Muss im Parent (App.js) gesetzt werden!
 }) {
   const [broadcasts, setBroadcasts] = useState(DEMO_BROADCASTS);
 
@@ -384,53 +397,138 @@ export default function HomeView({
             marginTop: 7,
           }}
         >
-          {actionGrid.map((a) => (
-            <button
-              key={a.id}
-              onClick={
-                a.action === "onGotoMenu"
-                  ? onGotoMenu
-                  : a.action === "onGotoOrders"
-                  ? onGotoOrders
-                  : a.action === "onGotoAdmin"
-                  ? onGotoAdmin
-                  : a.action === "onGotoKurier"
-                  ? onGotoKurier
-                  : a.action === "onGotoPass"
-                  ? onGotoPass
-                  : a.action === "onBuyCryptoClick"
-                  ? onBuyCryptoClick
-                  : a.action === "onGotoLotto"
-                  ? onGotoLotto
-                  : a.action === "onLogout"
-                  ? onLogout
-                  : undefined
-              }
-              style={{
-                background: a.bg,
-                color: a.color,
-                border: a.border || "none",
-                borderRadius: 14,
-                boxShadow: "0 2px 10px #0001",
-                fontWeight: 800,
-                fontSize: 15.5,
-                padding: "19px 0 11px 0",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 9,
-                transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
-                minHeight: 74,
-                position: "relative",
-                userSelect: "none",
-              }}
-            >
-              <div>{a.icon}</div>
-              <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
-            </button>
-          ))}
+          {actionGrid.map((a) =>
+            a.animate ? (
+              <motion.button
+                key={a.id}
+                onClick={
+                  a.action === "onGotoMenu"
+                    ? onGotoMenu
+                    : a.action === "onGotoOrders"
+                    ? onGotoOrders
+                    : a.action === "onGotoAdmin"
+                    ? onGotoAdmin
+                    : a.action === "onGotoKurier"
+                    ? onGotoKurier
+                    : a.action === "onGotoPass"
+                    ? onGotoPass
+                    : a.action === "onBuyCryptoClick"
+                    ? onBuyCryptoClick
+                    : a.action === "onGotoLotto"
+                    ? onGotoLotto
+                    : a.action === "onGotoMysteryBoxen"
+                    ? onGotoMysteryBoxen
+                    : a.action === "onLogout"
+                    ? onLogout
+                    : undefined
+                }
+                whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
+                animate={{
+                  boxShadow: [
+                    "0 0px 16px #f59e4234, 0 2px 12px #a3e63521",
+                    "0 0px 26px #a3e63599, 0 2px 16px #f59e4225",
+                    "0 0px 16px #f59e4234, 0 2px 12px #a3e63521",
+                  ],
+                }}
+                transition={{
+                  boxShadow: {
+                    duration: 2.5,
+                    repeat: Infinity,
+                    ease: "linear",
+                  },
+                }}
+                style={{
+                  background: a.bg,
+                  color: a.color,
+                  border: a.border || "none",
+                  borderRadius: 14,
+                  fontWeight: 800,
+                  fontSize: 15.5,
+                  padding: "19px 0 11px 0",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 9,
+                  transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
+                  minHeight: 74,
+                  position: "relative",
+                  userSelect: "none",
+                }}
+              >
+                <div>{a.icon}</div>
+                <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
+                <motion.div
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: [1, 1.13, 1] }}
+                  transition={{
+                    duration: 1.8,
+                    repeat: Infinity,
+                    repeatType: "loop",
+                  }}
+                  style={{
+                    position: "absolute",
+                    right: 13,
+                    top: 12,
+                    color: "#fff8",
+                    fontSize: 19,
+                    pointerEvents: "none",
+                  }}
+                >
+                  ✨
+                </motion.div>
+              </motion.button>
+            ) : (
+              <button
+                key={a.id}
+                onClick={
+                  a.action === "onGotoMenu"
+                    ? onGotoMenu
+                    : a.action === "onGotoOrders"
+                    ? onGotoOrders
+                    : a.action === "onGotoAdmin"
+                    ? onGotoAdmin
+                    : a.action === "onGotoKurier"
+                    ? onGotoKurier
+                    : a.action === "onGotoPass"
+                    ? onGotoPass
+                    : a.action === "onBuyCryptoClick"
+                    ? onBuyCryptoClick
+                    : a.action === "onGotoLotto"
+                    ? onGotoLotto
+                    : a.action === "onGotoMysteryBoxen"
+                    ? onGotoMysteryBoxen
+                    : a.action === "onLogout"
+                    ? onLogout
+                    : undefined
+                }
+                style={{
+                  background: a.bg,
+                  color: a.color,
+                  border: a.border || "none",
+                  borderRadius: 14,
+                  boxShadow: "0 2px 10px #0001",
+                  fontWeight: 800,
+                  fontSize: 15.5,
+                  padding: "19px 0 11px 0",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 9,
+                  transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
+                  minHeight: 74,
+                  position: "relative",
+                  userSelect: "none",
+                }}
+              >
+                <div>{a.icon}</div>
+                <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
+              </button>
+            )
+          )}
         </div>
       </div>
     </div>
