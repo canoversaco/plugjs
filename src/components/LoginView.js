@@ -56,7 +56,7 @@ export default class LoginView extends React.Component {
           {/* Wartungsmodus Info */}
           <div
             style={{
-              backgroundColor: "#fbbf24",
+              backgroundColor: "#21d128",
               color: "#1a202c",
               fontWeight: "700",
               padding: "10px 16px",
@@ -68,9 +68,7 @@ export default class LoginView extends React.Component {
               lineHeight: "1.3em",
             }}
           >
-            ⚠️ Die App befindet sich momentan im Wartungsmodus. Es können
-            vereinzelt Probleme auftreten. Bitte installiere die App neu, um
-            Fehler zu vermeiden.
+            ⚠️ Die App befindet sich nicht mehr im Wartungsmodus und ist nun wieder voll Funktionsfähig. Viel Spaß beim bestellen und mit dem neuen Update!
           </div>
 
           <div
