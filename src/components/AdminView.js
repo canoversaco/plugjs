@@ -1,6 +1,5 @@
 // src/components/AdminView.js
 import React, { useState, useEffect } from "react";
-
 import {
   collection,
   addDoc,
@@ -11,9 +10,9 @@ import {
   updateDoc,
   query,
   orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "../firebase";
-
 import { onSnapshot } from "firebase/firestore";
 import images from "./images/images";
 import { motion } from "framer-motion";
@@ -29,6 +28,7 @@ import {
   Package,
   Key,
   LogOut,
+  Gift,
 } from "lucide-react";
 
 // ---- TABS, PERIODS
@@ -40,6 +40,7 @@ const TABS = [
   { key: "broadcast", label: "📢 Broadcast" },
   { key: "deposits", label: "💸 Einzahlungen" },
   { key: "lotto", label: "🎰 Lotto" },
+  { key: "mysterybox", label: "🎁 Mystery Box" },
 ];
 const PERIODS = [
   { key: "7d", label: "7 Tage", ms: 7 * 24 * 3600 * 1000 },
@@ -47,7 +48,6 @@ const PERIODS = [
   { key: "30d", label: "1 Monat", ms: 30 * 24 * 3600 * 1000 },
   { key: "all", label: "Allzeit", ms: null },
 ];
-
 // ---- MAIN COMPONENT ----
 export default class AdminView extends React.Component {
   state = {
@@ -75,7 +75,7 @@ export default class AdminView extends React.Component {
     orderEdit: null,
     orderForm: { status: "", notiz: "" },
     userEdit: null,
-    userForm: { username: "", rolle: "kunde", passwort: "" },
+    userForm: { username: "", role: "kunde", password: "" },
     userAddOpen: false,
     broadcastText: "",
     broadcastError: "",
@@ -84,11 +84,40 @@ export default class AdminView extends React.Component {
     broadcastEditId: null,
     broadcastEditText: "",
     statsPeriod: "7d",
+    boxes: [],
+    boxLoading: false,
+    boxMessage: "",
+    boxEdit: null,
+    boxForm: {
+      name: "Neue Box",
+      preis: "",
+      items: [],
+      probabilities: {},
+      availableProducts: [],
+    },
+    selectedProduct: null,
   };
-
   componentDidMount() {
     this.fetchBroadcasts();
+    this.setupMysteryBoxListener();
   }
+
+  componentWillUnmount() {
+    if (this.unsubscribeBoxes) {
+      this.unsubscribeBoxes();
+    }
+  }
+
+  setupMysteryBoxListener = () => {
+    this.unsubscribeBoxes = onSnapshot(
+      collection(db, "mysteryBoxes"),
+      (snap) => {
+        const boxes = [];
+        snap.forEach((doc) => boxes.push({ id: doc.id, ...doc.data() }));
+        this.setState({ boxes });
+      }
+    );
+  };
 
   fetchBroadcasts = async () => {
     const q = query(collection(db, "broadcasts"), orderBy("created", "desc"));
@@ -98,9 +127,7 @@ export default class AdminView extends React.Component {
       broadcasts.push({ id: docSnap.id, ...docSnap.data() });
     });
     this.setState({ broadcasts });
-  };
-
-  // Broadcast-Handling
+  }; // Broadcast-Handling
   handleSendBroadcast = async () => {
     const text = this.state.broadcastText.trim();
     if (!text) {
@@ -123,14 +150,17 @@ export default class AdminView extends React.Component {
       this.setState({ broadcastError: "Fehler beim Senden." });
     }
   };
+
   handleDeleteBroadcast = async (id) => {
     if (!window.confirm("Broadcast wirklich löschen?")) return;
     await deleteDoc(doc(db, "broadcasts", id));
     this.fetchBroadcasts();
   };
+
   handleEditBroadcast = (id, text) => {
     this.setState({ broadcastEditId: id, broadcastEditText: text });
   };
+
   handleSaveEditBroadcast = async () => {
     const { broadcastEditId, broadcastEditText } = this.state;
     if (!broadcastEditText.trim()) {
@@ -149,15 +179,14 @@ export default class AdminView extends React.Component {
     setTimeout(() => this.setState({ broadcastSuccess: "" }), 1000);
     this.fetchBroadcasts();
   };
+
   handleCancelEditBroadcast = () => {
     this.setState({ broadcastEditId: null, broadcastEditText: "" });
   };
 
   handleTab(tab) {
     this.setState({ tab });
-  }
-
-  // PRODUKTE
+  } // PRODUKTE
   handleEditProdukt = (produkt) => {
     this.setState({
       produktEdit: produkt.id,
@@ -245,15 +274,12 @@ export default class AdminView extends React.Component {
     if (window.confirm("Produkt wirklich löschen?")) {
       try {
         await deleteDoc(doc(db, "produkte", produktId));
-        // Produkte-Liste wird durch Parent neu geladen, sonst hier explizit laden!
         alert("Produkt gelöscht!");
       } catch (e) {
         alert("Fehler beim Löschen des Produkts!");
       }
     }
-  };
-
-  // ORDERS
+  }; // ORDERS
   openOrderEdit(order) {
     this.setState({
       orderEdit: order.id,
@@ -263,6 +289,7 @@ export default class AdminView extends React.Component {
       },
     });
   }
+
   async handleSaveOrder(orderId) {
     const { orderForm } = this.state;
     try {
@@ -275,6 +302,7 @@ export default class AdminView extends React.Component {
       alert("Fehler beim Speichern!");
     }
   }
+
   async handleOrderDelete(orderId) {
     if (window.confirm("Diese Bestellung wirklich löschen?")) {
       try {
@@ -292,52 +320,450 @@ export default class AdminView extends React.Component {
       userForm: { ...s.userForm, [field]: value },
     }));
   };
+
   openUserEdit = (u) => {
     this.setState({
       userEdit: u.id,
       userForm: {
         username: u.username,
-        rolle: u.rolle,
-        passwort: "",
+        role: u.role,
+        password: "",
       },
     });
   };
+
   async handleSaveUser(userId) {
     const { userForm } = this.state;
     try {
       await updateDoc(doc(db, "users", userId), {
-        rolle: userForm.rolle,
-        ...(userForm.passwort ? { passwort: userForm.passwort } : {}),
+        role: userForm.role,
+        ...(userForm.password ? { password: userForm.password } : {}),
       });
       this.setState({
         userEdit: null,
-        userForm: { username: "", rolle: "kunde", passwort: "" },
+        userForm: { username: "", role: "kunde", password: "" },
       });
     } catch (e) {
       alert("Fehler beim Speichern!");
     }
   }
+
   async handleAddUser() {
     const { userForm } = this.state;
-    if (!userForm.username || !userForm.passwort) {
+    if (!userForm.username || !userForm.password) {
       this.setState({ error: "Name & Passwort erforderlich!" });
       return;
     }
     try {
       await addDoc(collection(db, "users"), {
         username: userForm.username,
-        rolle: userForm.rolle,
-        passwort: userForm.passwort,
+        role: userForm.role,
+        password: userForm.password,
       });
       this.setState({
-        userForm: { username: "", rolle: "kunde", passwort: "" },
+        userForm: { username: "", role: "kunde", password: "" },
         userAddOpen: false,
         error: "",
       });
     } catch (e) {
       alert("Fehler beim Hinzufügen!");
     }
-  }
+  } // Mystery Box Funktionen
+  editBox = (box) => {
+    this.setState({
+      boxEdit: box.id,
+      boxForm: {
+        name: box.name,
+        preis: box.preis || "",
+        items: box.items || [],
+        probabilities: box.probabilities || {},
+      },
+    });
+  };
+
+  saveBoxEdit = async () => {
+    const { boxEdit, boxForm } = this.state;
+
+    if (!boxForm.name) {
+      this.setState({ boxMessage: "Name ist erforderlich!" });
+      return;
+    }
+
+    const totalProbability = boxForm.items.reduce(
+      (sum, item) => sum + (item.wahrscheinlichkeit || 0),
+      0
+    );
+
+    if (totalProbability !== 100) {
+      this.setState({
+        boxMessage: "Die Gesamtwahrscheinlichkeit muss 100% betragen!",
+      });
+      return;
+    }
+
+    this.setState({ boxLoading: true });
+
+    try {
+      const probabilities = {};
+      boxForm.items.forEach((item) => {
+        probabilities[item.produktId] = item.wahrscheinlichkeit;
+      });
+
+      await updateDoc(doc(db, "mysteryBoxes", boxEdit), {
+        name: boxForm.name,
+        preis: Number(boxForm.preis) || 0,
+        items: boxForm.items,
+        probabilities,
+        updated: Date.now(),
+      });
+
+      this.setState({
+        boxMessage: "Box erfolgreich aktualisiert!",
+        boxEdit: null,
+        boxLoading: false,
+      });
+
+      setTimeout(() => this.setState({ boxMessage: "" }), 1500);
+    } catch (error) {
+      this.setState({
+        boxMessage: "Fehler beim Speichern: " + error.message,
+        boxLoading: false,
+      });
+    }
+  };
+
+  createMysteryBox = async () => {
+    this.setState({ boxLoading: true, boxMessage: "" });
+    try {
+      const newBox = {
+        name: "Neue Box",
+        preis: 0,
+        items: [],
+        probabilities: {},
+        created: Date.now(),
+        updated: Date.now(),
+      };
+
+      await addDoc(collection(db, "mysteryBoxes"), newBox);
+      this.setState({ boxMessage: "Box angelegt! Jetzt bearbeiten..." });
+
+      const q = query(
+        collection(db, "mysteryBoxes"),
+        orderBy("created", "desc"),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const newBoxDoc = snapshot.docs[0];
+        this.editBox({ id: newBoxDoc.id, ...newBoxDoc.data() });
+      }
+    } catch (e) {
+      this.setState({ boxMessage: "Fehler beim Anlegen: " + e.message });
+    }
+    this.setState({ boxLoading: false });
+  };
+
+  addProductToBox = () => {
+    const { selectedProduct, boxForm } = this.state;
+    if (!selectedProduct) return;
+
+    this.setState({
+      boxForm: {
+        ...boxForm,
+        items: [
+          ...boxForm.items,
+          {
+            produktId: selectedProduct,
+            wahrscheinlichkeit: 0,
+          },
+        ],
+      },
+      selectedProduct: null,
+    });
+  };
+
+  removeProductFromBox = (index) => {
+    const { boxForm } = this.state;
+    this.setState({
+      boxForm: {
+        ...boxForm,
+        items: boxForm.items.filter((_, i) => i !== index),
+      },
+    });
+  };
+
+  updateProductProbability = (index, value) => {
+    const { boxForm } = this.state;
+    const newItems = [...boxForm.items];
+
+    const probability = Math.min(100, Math.max(0, parseInt(value) || 0));
+
+    newItems[index] = {
+      ...newItems[index],
+      wahrscheinlichkeit: probability,
+    };
+
+    this.setState({
+      boxForm: {
+        ...boxForm,
+        items: newItems,
+      },
+    });
+  };
+  renderMysteryBoxTab = () => {
+    const { boxes, boxLoading, boxMessage, boxEdit, boxForm, selectedProduct } =
+      this.state;
+    const { produkte } = this.props;
+
+    return (
+      <div style={{ maxWidth: 800, margin: "0 auto", paddingTop: 12 }}>
+        <h3 style={{ fontWeight: 900, fontSize: 25, marginBottom: 17 }}>
+          🎁 Mystery Boxen
+        </h3>
+
+        {boxEdit ? (
+          <div
+            style={{
+              background: "#23262e",
+              padding: 15,
+              borderRadius: 10,
+              marginBottom: 20,
+            }}
+          >
+            <h4 style={{ color: "#38bdf8", marginBottom: 10 }}>
+              Box bearbeiten
+            </h4>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 5 }}>Name:</label>
+              <input
+                type="text"
+                value={boxForm.name}
+                onChange={(e) =>
+                  this.setState({
+                    boxForm: { ...boxForm, name: e.target.value },
+                  })
+                }
+                style={{ width: "100%", padding: 8, borderRadius: 5 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 5 }}>
+                Preis (€):
+              </label>
+              <input
+                type="number"
+                value={boxForm.preis}
+                onChange={(e) =>
+                  this.setState({
+                    boxForm: { ...boxForm, preis: e.target.value },
+                  })
+                }
+                style={{ width: "100%", padding: 8, borderRadius: 5 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 15 }}>
+              <h5 style={{ marginBottom: 8 }}>Produkte hinzufügen:</h5>
+              <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
+                <select
+                  value={selectedProduct || ""}
+                  onChange={(e) =>
+                    this.setState({ selectedProduct: e.target.value })
+                  }
+                  style={{ flex: 1, padding: 8, borderRadius: 5 }}
+                >
+                  <option value="">Produkt auswählen...</option>
+                  {produkte.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.preis}€)
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={this.addProductToBox}
+                  disabled={!selectedProduct}
+                  style={{
+                    background: "#38bdf8",
+                    color: "#18181b",
+                    padding: "8px 15px",
+                    borderRadius: 5,
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Hinzufügen
+                </button>
+              </div>
+
+              <h5 style={{ marginBottom: 8 }}>Enthaltene Produkte:</h5>
+              {boxForm.items.length === 0 ? (
+                <div style={{ color: "#a1a1aa" }}>
+                  Keine Produkte in dieser Box
+                </div>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {boxForm.items.map((item, index) => (
+                    <li
+                      key={index}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 0",
+                        borderBottom: "1px solid #3f3f46",
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: "bold" }}>
+                          {produkte.find((p) => p.id === item.produktId)
+                            ?.name || "Unbekanntes Produkt"}
+                        </span>
+                        <div style={{ fontSize: "0.8em", color: "#a1a1aa" }}>
+                          Wahrscheinlichkeit: {item.wahrscheinlichkeit || 0}%
+                        </div>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.wahrscheinlichkeit || ""}
+                          onChange={(e) =>
+                            this.updateProductProbability(index, e.target.value)
+                          }
+                          style={{
+                            width: "60px",
+                            padding: "5px",
+                            marginRight: "10px",
+                          }}
+                          placeholder="%"
+                        />
+                        <button
+                          onClick={() => this.removeProductFromBox(index)}
+                          style={{
+                            background: "#f87171",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "4px",
+                            padding: "5px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Entfernen
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={this.saveBoxEdit}
+                style={{
+                  background: "#a3e635",
+                  color: "#18181b",
+                  padding: "8px 15px",
+                  borderRadius: 5,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Speichern
+              </button>
+
+              <button
+                onClick={() => this.setState({ boxEdit: null })}
+                style={{
+                  background: "#f87171",
+                  color: "#fff",
+                  padding: "8px 15px",
+                  borderRadius: 5,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={this.createMysteryBox}
+              disabled={boxLoading}
+              style={{
+                background: "linear-gradient(94deg,#fde047 60%,#a3e635 140%)",
+                color: "#18181b",
+                fontWeight: 900,
+                border: 0,
+                borderRadius: 11,
+                fontSize: 18,
+                padding: "12px 0",
+                cursor: "pointer",
+                width: "100%",
+                marginBottom: 16,
+                boxShadow: "0 2px 12px #fde04744",
+              }}
+            >
+              Neue Mystery-Box anlegen
+            </button>
+
+            {boxMessage && (
+              <div
+                style={{ color: "#fde047", marginBottom: 12, fontWeight: 700 }}
+              >
+                {boxMessage}
+              </div>
+            )}
+          </>
+        )}
+
+        {boxes.map((box) => (
+          <div
+            key={box.id}
+            style={{
+              background: "#23262e",
+              borderRadius: 11,
+              padding: 12,
+              marginBottom: 14,
+              boxShadow: "0 2px 10px #0005",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Gift size={28} style={{ color: "#fde047" }} />
+              <b style={{ fontSize: 18, color: "#fff" }}>{box.name}</b>
+              <button
+                onClick={() => this.editBox(box)}
+                style={{
+                  marginLeft: "auto",
+                  background: "#38bdf8",
+                  color: "#18181b",
+                  border: 0,
+                  borderRadius: 8,
+                  padding: "6px 14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Bearbeiten
+              </button>
+            </div>
+            <div style={{ fontSize: 14, color: "#a1a1aa", marginTop: 8 }}>
+              {box.items?.length || 0} Produkte &nbsp;|&nbsp; Preis:{" "}
+              {box.preis || "0"}€ &nbsp;|&nbsp; Wahrscheinlichkeiten
+              konfigurierbar
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   // ---- Dashboard Statistiken
   filterOrdersByPeriod(orders, periodKey) {
@@ -346,6 +772,7 @@ export default class AdminView extends React.Component {
     if (!period || !period.ms) return orders;
     return orders.filter((o) => now - o.ts <= period.ms);
   }
+
   getStats(orders, produkte, users, periodKey) {
     const filteredOrders = this.filterOrdersByPeriod(orders, periodKey);
     let sumAll = 0;
@@ -412,7 +839,6 @@ export default class AdminView extends React.Component {
       kundenGesamt: users.length,
     };
   }
-
   render() {
     const {
       produkte = [],
@@ -430,11 +856,13 @@ export default class AdminView extends React.Component {
       produktAddForm,
       addError,
       statsPeriod,
+      boxes,
+      boxLoading,
+      boxMessage,
     } = this.state;
 
     const stats = this.getStats(orders, produkte, users, statsPeriod);
 
-    // Admin Panel Layout
     return (
       <div
         style={{
@@ -514,7 +942,6 @@ export default class AdminView extends React.Component {
               ))}
             </div>
           </div>
-
           {/* --- DASHBOARD --- */}
           {tab === "dashboard" && (
             <motion.div
@@ -750,12 +1177,13 @@ export default class AdminView extends React.Component {
           {tab === "broadcast" && renderBroadcastTab(this)}
           {tab === "deposits" && renderDepositsTab(users)}
           {tab === "lotto" && <LottoAdminTab />}
+
+          {tab === "mysterybox" && this.renderMysteryBoxTab()}
         </div>
       </div>
     );
   }
 }
-
 // ---------- STAT KACHEL ----------
 function StatTile({ title, value, icon, color, sub }) {
   return (
@@ -800,9 +1228,6 @@ function StatTile({ title, value, icon, color, sub }) {
 }
 
 // ------- ALLE TABS ALS FUNKTION (übersichtlich & copy-paste ready!) -------
-// ... Füge hier den Produkt-, Order-, Nutzer-, Broadcast- und Deposits-Tab ein wie gehabt!
-
-//LOTTO TAB
 function LottoAdminTab() {
   const [lottos, setLottos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -812,20 +1237,17 @@ function LottoAdminTab() {
     const unsub = onSnapshot(collection(db, "lottos"), (snap) => {
       const lottos = [];
       snap.forEach((d) => lottos.push({ id: d.id, ...d.data() }));
-      // Neueste oben
       lottos.sort((a, b) => (b.start || 0) - (a.start || 0));
       setLottos(lottos);
     });
     return unsub;
   }, []);
 
-  // Ziehung starten
   async function startLotto() {
     setLoading(true);
     setMessage("");
     try {
       const now = Date.now();
-      // 7 Tage Laufzeit (in ms)
       await addDoc(collection(db, "lottos"), {
         start: now,
         end: now + 7 * 24 * 3600 * 1000,
@@ -841,7 +1263,6 @@ function LottoAdminTab() {
     setLoading(false);
   }
 
-  // Ziehung abschließen, Gewinner festlegen und Guthaben auszahlen
   async function ziehungBeenden(lotto) {
     if (lotto.finished) return;
     if (!lotto.teilnehmer || lotto.teilnehmer.length === 0) {
@@ -851,7 +1272,6 @@ function LottoAdminTab() {
     setLoading(true);
     setMessage("");
     try {
-      // Zufälligen Gewinner wählen
       const winner =
         lotto.teilnehmer[Math.floor(Math.random() * lotto.teilnehmer.length)];
 
@@ -870,7 +1290,6 @@ function LottoAdminTab() {
         return;
       }
 
-      // Gewinner User abholen
       const userRef = doc(db, "users", winner.userId);
       const userSnap = await getDoc(userRef);
 
@@ -883,12 +1302,10 @@ function LottoAdminTab() {
       const userData = userSnap.data();
       const neuesGuthaben = (userData.guthaben ?? 0) + gewinnbetrag;
 
-      // 1. Guthaben des Gewinners erhöhen
       await updateDoc(userRef, {
         guthaben: neuesGuthaben,
       });
 
-      // 2. Lotto-Dokument als abgeschlossen markieren & Gewinner eintragen
       await updateDoc(doc(db, "lottos", lotto.id), {
         finished: true,
         winner: {
@@ -1031,7 +1448,6 @@ function anonymisiereName(name) {
   return name.slice(0, 2) + "***" + name.slice(-2);
 }
 
-// PRODUKTE TAB
 function renderProdukteTab(ctx) {
   const {
     produkte = [],
@@ -1413,7 +1829,6 @@ function renderProdukteTab(ctx) {
   );
 }
 
-// ORDERS TAB
 function renderOrdersTab(ctx, produkte, orders, onChat) {
   return (
     <div>
@@ -1648,7 +2063,6 @@ function renderOrdersTab(ctx, produkte, orders, onChat) {
   );
 }
 
-// USERS TAB
 function renderUsersTab(ctx, users) {
   return (
     <div>
@@ -1706,8 +2120,8 @@ function renderUsersTab(ctx, users) {
           <input
             type="password"
             placeholder="Passwort"
-            value={ctx.state.userForm.passwort}
-            onChange={(e) => ctx.handleChangeUser("passwort", e.target.value)}
+            value={ctx.state.userForm.password}
+            onChange={(e) => ctx.handleChangeUser("password", e.target.value)}
             style={{
               padding: 6,
               borderRadius: 7,
@@ -1715,8 +2129,8 @@ function renderUsersTab(ctx, users) {
             }}
           />
           <select
-            value={ctx.state.userForm.rolle}
-            onChange={(e) => ctx.handleChangeUser("rolle", e.target.value)}
+            value={ctx.state.userForm.role}
+            onChange={(e) => ctx.handleChangeUser("role", e.target.value)}
             style={{ padding: 6, borderRadius: 7, minWidth: 100 }}
           >
             <option value="kunde">Kunde</option>
@@ -1754,8 +2168,8 @@ function renderUsersTab(ctx, users) {
             >
               <span style={{ fontWeight: 700 }}>{u.username}</span>
               <select
-                value={ctx.state.userForm.rolle}
-                onChange={(e) => ctx.handleChangeUser("rolle", e.target.value)}
+                value={ctx.state.userForm.role}
+                onChange={(e) => ctx.handleChangeUser("role", e.target.value)}
                 style={{
                   marginLeft: 7,
                   borderRadius: 6,
@@ -1769,9 +2183,9 @@ function renderUsersTab(ctx, users) {
               <input
                 type="password"
                 placeholder="Passwort ändern (leer = unverändert)"
-                value={ctx.state.userForm.passwort}
+                value={ctx.state.userForm.password}
                 onChange={(e) =>
-                  ctx.handleChangeUser("passwort", e.target.value)
+                  ctx.handleChangeUser("password", e.target.value)
                 }
                 style={{
                   marginLeft: 7,
@@ -1814,7 +2228,7 @@ function renderUsersTab(ctx, users) {
             </li>
           ) : (
             <li key={u.id} style={{ marginBottom: 6 }}>
-              {u.username} ({u.rolle})
+              {u.username} ({u.role})
               <button
                 onClick={() => ctx.openUserEdit(u)}
                 style={{
@@ -1839,7 +2253,6 @@ function renderUsersTab(ctx, users) {
   );
 }
 
-// BROADCAST TAB
 function renderBroadcastTab(ctx) {
   return (
     <div>
@@ -2018,7 +2431,6 @@ function renderBroadcastTab(ctx) {
   );
 }
 
-// DEPOSITS TAB & Hilfsfunktionen
 function renderDepositsTab(users) {
   const offeneDepositWishes = collectOpenDepositWishes(users);
   const offeneDeposits = collectDeposits(users, false);
@@ -2049,6 +2461,7 @@ function renderDepositsTab(users) {
     </div>
   );
 }
+
 function collectOpenDepositWishes(users) {
   const wishes = [];
   users.forEach((u) => {
@@ -2062,6 +2475,7 @@ function collectOpenDepositWishes(users) {
   });
   return wishes.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 }
+
 function collectDeposits(users, abgeschlossen = false) {
   const deposits = [];
   users.forEach((u) => {
@@ -2079,6 +2493,7 @@ function collectDeposits(users, abgeschlossen = false) {
   });
   return deposits.sort((a, b) => (b.time || b.ts || 0) - (a.time || a.ts || 0));
 }
+
 function OpenDepositList({ deposits }) {
   if (!deposits || deposits.length === 0)
     return (
@@ -2120,6 +2535,7 @@ function OpenDepositList({ deposits }) {
     </table>
   );
 }
+
 function DepositList({ deposits }) {
   if (!deposits || deposits.length === 0)
     return (
