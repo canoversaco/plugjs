@@ -11,7 +11,7 @@ import {
 export default class MysteryBoxUserView extends React.Component {
   state = {
     boxes: [],
-    produkte: [],
+    produkte: this.props.produkte || [], // Nutze produkte aus den Props
     selectedBox: null,
     opening: false,
     won: null,
@@ -27,11 +27,11 @@ export default class MysteryBoxUserView extends React.Component {
   async loadData() {
     try {
       this.setState({ loading: true });
+      
       // Boxen laden
       const boxSnap = await getDocs(collection(db, "mysteryBoxes"));
       const boxes = boxSnap.docs.map((docSnap) => {
         const data = docSnap.data();
-        // Sicherstellen, dass produkte ein Array ist (oder sonst leeres Array)
         return {
           id: docSnap.id,
           ...data,
@@ -39,25 +39,24 @@ export default class MysteryBoxUserView extends React.Component {
         };
       });
 
-      // Produkte laden (alle!)
-      const pSnap = await getDocs(collection(db, "produkte"));
-      const produkte = pSnap.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
+      // Produkte müssen nicht neu geladen werden, da sie als Prop übergeben werden
+      const produkte = this.props.produkte || [];
 
       // User-BoxHistory
       let boxHistory = [];
-      if (
-        this.props.user?.boxHistory &&
-        Array.isArray(this.props.user.boxHistory)
-      ) {
+      if (this.props.user?.boxHistory && Array.isArray(this.props.user.boxHistory)) {
         boxHistory = this.props.user.boxHistory;
       } else {
         const userDoc = await getDoc(doc(db, "users", this.props.user.id));
         boxHistory = userDoc.data()?.boxHistory || [];
       }
-      this.setState({ boxes, produkte, boxHistory, loading: false });
+      
+      this.setState({ 
+        boxes, 
+        produkte, 
+        boxHistory, 
+        loading: false 
+      });
     } catch (e) {
       this.setState({
         message: "❌ Fehler beim Laden der Daten",
@@ -66,12 +65,10 @@ export default class MysteryBoxUserView extends React.Component {
     }
   }
 
-  // Holt das Produkt-Objekt aus der Produktliste anhand der ID
   getProdukt = (produktId) => {
     return this.state.produkte.find((p) => p.id === produktId);
   };
 
-  // Ziehung: Ermittelt aus der Box das gezogene Produkt (nach Wahrscheinlichkeit)
   draw(box) {
     if (!box.produkte || !box.produkte.length) {
       this.setState({ message: "❌ Diese Box hat keine Inhalte!" });
@@ -90,7 +87,6 @@ export default class MysteryBoxUserView extends React.Component {
       acc += Number(p.chance) || 0;
       if (roll < acc) return p.produktId;
     }
-    // Fallback
     return box.produkte[box.produkte.length - 1]?.produktId || null;
   }
 
