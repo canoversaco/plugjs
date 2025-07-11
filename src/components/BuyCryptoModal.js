@@ -181,7 +181,7 @@ await updateDoc(userRef, {
               <b>2.</b> Klicke auf <b>„Jetzt via Guardarian kaufen“</b>
               <br />
               <a
-                href={GUARDARIAN_URL + (amount ? `&amount=${amount}` : "")}
+                href={GUARDARIAN_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
