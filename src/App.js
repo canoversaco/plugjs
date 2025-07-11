@@ -9,6 +9,7 @@ import {
   updateDoc,
   getDoc,
 } from "firebase/firestore";
+import BuyCryptoModal from "./components/BuyCryptoModal";
 import LoginView from "./components/LoginView";
 import HomeView from "./components/HomeView";
 import KundeView from "./components/KundeView";
