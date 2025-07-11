@@ -14,7 +14,9 @@ export default function BuyCryptoModal({ user, onClose }) {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
-
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists() ? userSnap.data() : {};
+  
   // --- EUR zu BTC Vorschau (Guardarian liefert keine API, also quick fetch von coinmarketcap)
   const fetchBtcEstimate = async (eur) => {
     try {
@@ -54,14 +56,19 @@ export default function BuyCryptoModal({ user, onClose }) {
     setPending(true);
     const btc = await fetchBtcEstimate(eur);
     try {
-      await updateDoc(doc(db, "users", user.id), {
-        openDeposit: {
-          eur,
-          btc: parseFloat(btc),
-          ts: Date.now(),
-          erledigt: false,
-        },
-      });
+await updateDoc(userRef, {
+  guthaben: (userData.guthaben || 0) + eurValue,
+  btc_deposits: [
+    ...(userData.btc_deposits || []),
+    {
+      ...passendeTx,
+      gutgeschrieben: true,
+      eurValue,
+      Timestamp: Date.now(),
+    },
+  ],
+  openDeposit: { ...open, erledigt: true, txid: passendeTx.txid },
+});
       setStep(1);
     } catch (e) {
       setErr("Fehler beim Speichern. Versuche es erneut!");
