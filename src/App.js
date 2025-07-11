@@ -269,7 +269,9 @@ export default class App extends React.Component {
   };
 
   handleBestellungAbsenden = async (orderData) => {
-    const { user, warenkorb, produkte } = this.state;
+    const { user, produkte } = this.state;
+    // NEU: immer den warenkorb aus orderData nehmen!
+    const warenkorb = orderData.warenkorb ?? [];
 
     for (let item of warenkorb) {
       const p = produkte.find((pr) => pr.id === item.produktId);
@@ -302,7 +304,7 @@ export default class App extends React.Component {
 
     await this.bestellungHinzufügen({
       kunde: user.username,
-      warenkorb,
+      warenkorb, // <-- KORREKT!
       gesamt: orderData.gesamt ?? 0,
       rabatt: rabatt,
       endpreis: zuZahlen,
