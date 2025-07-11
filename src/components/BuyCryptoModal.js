@@ -1,131 +1,91 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
-// Deine Admin Wallet
+// Adresse & Anbieter
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
+const GUARDARIAN_URL = "https://guardarian.com/buy/crypto?to=BTC&address=" + ADMIN_BTC_ADDRESS + "&from=EUR";
 
-// APIs
-async function fetchBtcPrice() {
-  const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur");
-  const data = await res.json();
-  return data.bitcoin.eur;
-}
-
-// Guardarian
-function getGuardarianUrl(amountEUR) {
-  return `https://guardarian.com/buy-crypto?crypto_currency=BTC&fiat_currency=EUR&amount=${amountEUR || 100}&wallet_address=${ADMIN_BTC_ADDRESS}&theme=dark`;
-}
-
-// Changelly (ohne Registrierung, mit Apple Pay/Karte)
-function getChangellyUrl(amountEUR) {
-  return `https://changelly.com/buy/btc/eur?amount=${amountEUR || 100}&address=${ADMIN_BTC_ADDRESS}`;
-}
-
-// Optional: Helper für Backend-Deposit anlegen
-async function setPendingDeposit(userId, eur, btc) {
-  // Hier ggf. an dein Backend/Firestore schreiben – Beispiel:
-  await fetch("/api/open-deposit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, eur, btc, ts: Date.now() }),
-  });
-}
-
-export default function BuyCryptoModal({ user, amount, btc, onClose }) {
-  // Steps: 0=Input, 1=Provider, 2=Pending
+export default function BuyCryptoModal({ user, onClose }) {
+  // Step: 0=Start, 1=Pending
   const [step, setStep] = useState(0);
-  const [eur, setEur] = useState(amount || "");
-  const [btcPrice, setBtcPrice] = useState(null);
-  const [calcBtc, setCalcBtc] = useState(btc || "");
-  const [provider, setProvider] = useState("guardarian");
+  const [amount, setAmount] = useState(""); // EUR Betrag
+  const [btcEstimate, setBtcEstimate] = useState("");
+  const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState("");
 
-  useEffect(() => {
-    fetchBtcPrice().then(setBtcPrice);
-  }, []);
-
-  useEffect(() => {
-    if (btcPrice && eur) {
-      setCalcBtc((parseFloat(eur) / btcPrice).toFixed(6));
-    }
-  }, [eur, btcPrice]);
-
-  // Step 2: Pending-Check (simulate "awaiting deposit")
-  useEffect(() => {
-    if (step === 2 && user && eur && calcBtc) {
-      // Trigger optional Backend für "offene Einzahlung" (dein Backend verarbeitet dies automatisch)
-      setPendingDeposit(user.id, eur, calcBtc).catch(() => {});
-    }
-  }, [step, user, eur, calcBtc]);
-
-function handleCopy() {
-  // Moderner Weg:
-  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-    navigator.clipboard.writeText(ADMIN_BTC_ADDRESS)
-      .then(() => setCopied(true))
-      .catch(() => fallbackCopy());
-    setTimeout(() => setCopied(false), 1200);
-  } else {
-    fallbackCopy();
-  }
-  
-  function fallbackCopy() {
-    // Fallback: Textfeld trick
-    const textArea = document.createElement("textarea");
-    textArea.value = ADMIN_BTC_ADDRESS;
-    document.body.appendChild(textArea);
-    textArea.select();
+  // --- EUR zu BTC Vorschau (Guardarian liefert keine API, also quick fetch von coinmarketcap)
+  const fetchBtcEstimate = async (eur) => {
     try {
-      document.execCommand('copy');
-      setCopied(true);
-    } catch (err) {
-      setCopied(false);
-      alert("Copy nicht unterstützt. Bitte Adresse manuell kopieren.");
+      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur");
+      const data = await res.json();
+      if (data?.bitcoin?.eur) {
+        const btc = (eur / data.bitcoin.eur).toFixed(7);
+        setBtcEstimate(btc);
+        return btc;
+      }
+    } catch {}
+    setBtcEstimate("");
+    return "";
+  };
+
+  // --- Clipboard Copy ---
+  function handleCopy() {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(ADMIN_BTC_ADDRESS).then(() => setCopied(true));
+    } else {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = ADMIN_BTC_ADDRESS;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); setCopied(true); } catch {}
+      document.body.removeChild(ta);
     }
-    document.body.removeChild(textArea);
-    setTimeout(() => setCopied(false), 1200);
-  }
-}
-
-  function handleAbortDeposit() {
-    // Optional: Informiere Backend, dass die offene Einzahlung abgebrochen wurde (ggf. openDeposit löschen)
-    // await fetch("/api/abort-deposit", { ... });
-    setStep(0);
-    setProvider("guardarian");
+    setTimeout(() => setCopied(false), 1100);
   }
 
-  const guardarianUrl = getGuardarianUrl(eur || 100);
-  const changellyUrl = getChangellyUrl(eur || 100);
-
-  // Statusbalken
-  function Stepper({ step }) {
-    const labels = ["Betrag wählen", "Kaufen", "Prüfung"];
-    return (
-      <div style={{ display: "flex", gap: 0, margin: "14px 0 22px 0", justifyContent: "center" }}>
-        {labels.map((label, idx) => (
-          <div key={label} style={{
-            flex: 1,
-            textAlign: "center",
-            fontSize: 14,
-            color: step === idx ? "#38bdf8" : "#bababa",
-            fontWeight: step === idx ? 800 : 700,
-            letterSpacing: 0.08,
-            borderBottom: step === idx ? "3.5px solid #38bdf8" : "2.5px solid #23262e",
-            paddingBottom: 4,
-            opacity: step >= idx ? 1 : 0.7
-          }}>
-            {label}
-          </div>
-        ))}
-      </div>
-    );
+  // --- Start Einzahlung: in DB hinterlegen + Step wechseln ---
+  async function startDeposit() {
+    setErr("");
+    const eur = parseFloat(amount);
+    if (!eur || eur < 10) { setErr("Bitte mind. 10 € eingeben."); return; }
+    setPending(true);
+    const btc = await fetchBtcEstimate(eur);
+    try {
+      await updateDoc(doc(db, "users", user.id), {
+        openDeposit: {
+          eur,
+          btc: parseFloat(btc),
+          ts: Date.now(),
+          erledigt: false,
+        },
+      });
+      setStep(1);
+    } catch (e) {
+      setErr("Fehler beim Speichern. Versuche es erneut!");
+    }
+    setPending(false);
   }
 
+  // --- Einzahlung abbrechen (openDeposit zurücksetzen) ---
+  async function cancelDeposit() {
+    try {
+      await updateDoc(doc(db, "users", user.id), {
+        openDeposit: null,
+      });
+    } catch {}
+    onClose();
+  }
+
+  // --- Stepper UI ---
   return (
     <div
       style={{
         minHeight: "100vh",
         minWidth: "100vw",
-        background: "rgba(15,18,25,0.92)",
+        background: "rgba(18,22,31,0.93)",
         color: "#fafaf9",
         fontFamily: "'Inter',sans-serif",
         display: "flex",
@@ -133,260 +93,190 @@ function handleCopy() {
         alignItems: "center",
         position: "fixed",
         top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 2000,
-        backdropFilter: "blur(7px)",
-        WebkitBackdropFilter: "blur(7px)",
-        transition: "background 0.18s"
+        zIndex: 10000,
+        backdropFilter: "blur(5px)",
       }}
-      // NICHT schließbar über Overlay!
+      onClick={cancelDeposit}
     >
       <div
-        style={{
-          background: "linear-gradient(133deg, #181b23 82%, #38bdf833 100%)",
-          borderRadius: 23,
-          padding: "34px 22px 26px 22px",
-          maxWidth: 410, width: "97vw",
-          boxShadow: "0 12px 36px #000a, 0 2px 10px #38bdf822",
-          border: "1.5px solid #292933",
-          position: "relative"
-        }}
         onClick={e => e.stopPropagation()}
+        style={{
+          background: "linear-gradient(137deg, #23272e 89%, #38bdf822 100%)",
+          borderRadius: 22,
+          padding: "33px 19px 26px 19px",
+          maxWidth: 410,
+          width: "97vw",
+          boxShadow: "0 9px 36px #000a, 0 1px 7px #38bdf822",
+          border: "1.5px solid #292933",
+          position: "relative",
+        }}
       >
+        {/* CLOSE */}
         <button
-          onClick={onClose}
+          onClick={cancelDeposit}
           style={{
-            position: "absolute", right: 15, top: 12,
-            fontSize: 26, background: "#222c",
-            border: 0, color: "#38bdf8", fontWeight: 900, borderRadius: 8,
-            width: 36, height: 36, cursor: "pointer", zIndex: 2
+            position: "absolute", right: 15, top: 14,
+            fontSize: 27, background: "rgba(37,40,54,0.74)", border: 0,
+            color: "#e5e7eb", fontWeight: 800, borderRadius: 8,
+            width: 36, height: 36, cursor: "pointer", zIndex: 2,
           }}
           aria-label="Schließen"
-        >
-          ×
-        </button>
+        >×</button>
 
-        <h2
-          style={{
-            color: "#38bdf8", marginBottom: 5, fontWeight: 900,
-            fontSize: 22, letterSpacing: 0.82, textAlign: "center"
-          }}
-        >
-          Krypto kaufen
+        <h2 style={{
+          color: "#38bdf8", marginBottom: 9, fontWeight: 900, fontSize: 21,
+          letterSpacing: 0.8, textAlign: "center"
+        }}>
+          Guthaben aufladen
         </h2>
-        <Stepper step={step} />
-
+        <div style={{
+          color: "#f59e42", fontWeight: 700, textAlign: "center",
+          fontSize: 14.7, marginBottom: 12, marginTop: -4
+        }}>
+          <span style={{ color: "#a3e635" }}>Kein KYC, keine Registrierung!</span> Zahlung mit Apple Pay, SEPA & Karten.<br />
+          Anbieter: <a href="https://guardarian.com/" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Guardarian</a>
+        </div>
+        
+        {/* --- Step 0: Betrag auswählen und Info --- */}
         {step === 0 && (
           <>
-            {/* Schritt 1: Betrag wählen */}
             <div style={{
-              background: "#232734", borderRadius: 13,
-              padding: "13px 15px 13px 15px", marginBottom: 15,
-              boxShadow: "0 2px 10px #0002, 0 1px 4px #38bdf822"
+              marginBottom: 9, fontSize: 15.1, color: "#bababa", textAlign: "center"
             }}>
-              <div style={{ fontWeight: 700, color: "#a3e635", fontSize: 15.8, marginBottom: 2 }}>
-                Wunschbetrag in EUR:
-              </div>
+              <b>1.</b> Wunschbetrag (€) eingeben <br />
               <input
                 type="number"
-                value={eur}
-                onChange={e => setEur(e.target.value)}
                 min={10}
-                max={700}
-                step={5}
-                placeholder="100"
-                style={{
-                  width: "97%", fontSize: 18, fontWeight: 700, border: "none",
-                  borderRadius: 7, padding: "8px 13px", marginTop: 6, marginBottom: 2,
-                  background: "#282d38", color: "#38bdf8", boxShadow: "0 1px 6px #0002"
+                step={1}
+                value={amount}
+                onChange={e => {
+                  setAmount(e.target.value);
+                  fetchBtcEstimate(e.target.value);
                 }}
+                style={{
+                  width: 150, fontSize: 16, padding: "7px 9px",
+                  borderRadius: 8, border: "1px solid #333", marginTop: 7, fontWeight: 700,
+                  marginBottom: 7, color: "#23272e", background: "#f7f7ff",
+                  boxShadow: "0 1px 5px #23262e11"
+                }}
+                placeholder="Betrag in €"
               />
-              <div style={{ color: "#fff", fontSize: 14.7, marginTop: 2, marginBottom: 2 }}>
-                ≈ <span style={{ color: "#38bdf8", fontWeight: 800 }}>{calcBtc}</span> BTC &nbsp;
-                <span style={{ color: "#bababa", fontSize: 13 }}>({btcPrice ? btcPrice.toLocaleString() : "?"} €/BTC)</span>
-              </div>
+              {btcEstimate && (
+                <div style={{ color: "#38bdf8", marginTop: 2 }}>
+                  Entspricht ca. <b>{btcEstimate} BTC</b>
+                </div>
+              )}
             </div>
             <div style={{
-              color: "#b4f27a", background: "#232f1c", borderRadius: 8, fontSize: 14.2,
-              padding: "10px 14px", marginBottom: 14, textAlign: "center", fontWeight: 600, lineHeight: 1.4
+              marginBottom: 7, fontSize: 15.1, color: "#bababa", textAlign: "center"
             }}>
-              <span style={{ color: "#eab308", fontWeight: 700 }}>Wichtig:</span> Das <b>Guthaben wird nur automatisch gutgeschrieben</b>, wenn <b>der exakte BTC-Betrag</b> (<span style={{ color: "#38bdf8" }}>{calcBtc} BTC</span>) <b>+/-1%</b> an die unten stehende Adresse gesendet wird!
-            </div>
-            <button
-              onClick={() => setStep(1)}
-              disabled={!eur || eur < 10 || eur > 700}
-              style={{
-                width: "100%", background: "#38bdf8", color: "#18181b",
-                padding: "13px 0", border: 0, borderRadius: 11, fontWeight: 900,
-                fontSize: 18, marginTop: 3, cursor: (!eur || eur < 10) ? "not-allowed" : "pointer",
-                boxShadow: "0 2px 10px #38bdf822", letterSpacing: 0.21,
-                opacity: !eur || eur < 10 || eur > 700 ? 0.64 : 1
-              }}
-            >
-              Weiter &rarr;
-            </button>
-          </>
-        )}
-
-        {step === 1 && (
-          <>
-            {/* Schritt 2: Anbieter wählen + BTC-Adresse */}
-            <div style={{ color: "#bababa", fontSize: 14.5, marginBottom: 7, textAlign: "center" }}>
-              <span style={{ color: "#a3e635", fontWeight: 700 }}>Deine BTC-Empfangsadresse:</span>
+              <b>2.</b> Klicke auf <b>„Jetzt via Guardarian kaufen“</b>
+              <br />
+              <a
+                href={GUARDARIAN_URL + (amount ? `&amount=${amount}` : "")}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: "#38bdf8", color: "#23272e",
+                  fontWeight: 900, padding: "13px 0", borderRadius: 12,
+                  width: "100%", display: "block", textAlign: "center",
+                  fontSize: 16.5, margin: "8px 0 4px 0", boxShadow: "0 1.5px 9px #38bdf822",
+                  textDecoration: "none", letterSpacing: 0.13, marginBottom: 6
+                }}
+                onClick={startDeposit}
+                disabled={pending}
+              >
+                Jetzt via Guardarian kaufen →
+              </a>
             </div>
             <div style={{
-              display: "flex", alignItems: "center",
-              justifyContent: "center",
-              background: "#18181b", borderRadius: 7,
-              padding: "6px 12px", fontFamily: "monospace",
-              fontSize: 15.2, color: "#a3e635", letterSpacing: 0.05,
-              marginBottom: 12
+              marginBottom: 10, color: "#bababa", fontSize: 14, textAlign: "center"
             }}>
-              <span>{ADMIN_BTC_ADDRESS}</span>
+              <b>3.</b> Sende <b>exakt</b> den im Shop angezeigten BTC-Betrag an:<br />
+              <span
+                style={{
+                  color: "#a3e635", fontFamily: "monospace",
+                  background: "#18181b", borderRadius: 7, padding: "7px 8px",
+                  display: "inline-block", margin: "7px 0 4px 0",
+                  boxShadow: "0 1px 5px #23262e22", border: "1.2px solid #292933",
+                  letterSpacing: 0.19,
+                }}
+              >
+                {ADMIN_BTC_ADDRESS}
+              </span>
               <button
                 onClick={handleCopy}
                 style={{
-                  marginLeft: 10, padding: "3px 12px", fontSize: 13,
-                  border: "none", borderRadius: 7,
                   background: copied ? "#22c55e" : "#23262e",
-                  color: copied ? "#fff" : "#38bdf8", fontWeight: 700, cursor: "pointer",
-                  transition: "background 0.14s"
+                  color: copied ? "#fff" : "#38bdf8",
+                  border: 0, borderRadius: 7, fontWeight: 700, fontSize: 14.3,
+                  padding: "5px 13px", marginLeft: 12, marginBottom: 4, marginTop: 2,
+                  cursor: "pointer", transition: "background 0.13s",
+                  outline: "none", boxShadow: copied ? "0 0 0 2px #22c55e55" : "",
                 }}
+                disabled={copied}
               >
                 {copied ? "✔️ Kopiert" : "Adresse kopieren"}
               </button>
             </div>
-            <div style={{ color: "#bababa", fontSize: 13.5, marginBottom: 10, textAlign: "center" }}>
-              <b>Empfohlen:</b> Guardarian (Apple Pay, Google Pay, Karte, keine Registrierung)
-            </div>
-            <div style={{ display: "flex", gap: 9, marginBottom: 13 }}>
-              <button
-                onClick={() => setProvider("guardarian")}
-                style={{
-                  flex: 1,
-                  background: provider === "guardarian" ? "#a3e635" : "#23262e",
-                  color: provider === "guardarian" ? "#23262e" : "#b4f27a",
-                  border: "none", borderRadius: 9, fontWeight: 900, fontSize: 16.1,
-                  padding: "10px 0", boxShadow: "0 1px 7px #a3e63544", cursor: "pointer"
-                }}
-              >
-                Guardarian
-              </button>
-              <button
-                onClick={() => setProvider("changelly")}
-                style={{
-                  flex: 1,
-                  background: provider === "changelly" ? "#38bdf8" : "#23262e",
-                  color: provider === "changelly" ? "#23262e" : "#b7eafe",
-                  border: "none", borderRadius: 9, fontWeight: 900, fontSize: 16.1,
-                  padding: "10px 0", boxShadow: "0 1px 7px #38bdf844", cursor: "pointer"
-                }}
-              >
-                Changelly
-              </button>
-            </div>
-            {provider === "guardarian" && (
-              <a
-                href={guardarianUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setStep(2)}
-                style={{
-                  width: "100%", display: "block", textAlign: "center",
-                  background: "linear-gradient(90deg,#a3e635 60%,#38bdf8 100%)",
-                  color: "#23262e", fontWeight: 900, fontSize: 18.5,
-                  padding: "13px 0", borderRadius: 13, marginBottom: 13,
-                  boxShadow: "0 2px 12px #a3e63522",
-                  letterSpacing: 0.15,
-                  textDecoration: "none"
-                }}
-              >
-                Mit Guardarian BTC kaufen &rarr;
-              </a>
-            )}
-            {provider === "changelly" && (
-              <a
-                href={changellyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setStep(2)}
-                style={{
-                  width: "100%", display: "block", textAlign: "center",
-                  background: "linear-gradient(90deg,#38bdf8 60%,#a3e635 100%)",
-                  color: "#23262e", fontWeight: 900, fontSize: 18.5,
-                  padding: "13px 0", borderRadius: 13, marginBottom: 13,
-                  boxShadow: "0 2px 12px #38bdf822",
-                  letterSpacing: 0.15,
-                  textDecoration: "none"
-                }}
-              >
-                Mit Changelly BTC kaufen &rarr;
-              </a>
-            )}
-            <button
-              onClick={() => setStep(0)}
-              style={{
-                width: "100%",
-                background: "#23262e",
-                color: "#bababa",
-                padding: "12px 0",
-                border: "none",
-                borderRadius: 11,
-                fontWeight: 900,
-                fontSize: 15,
-                marginTop: 0,
-                cursor: "pointer",
-                boxShadow: "0 2px 10px #0001",
-                letterSpacing: 0.14,
-              }}
-            >
-              &larr; Zurück
-            </button>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            {/* Schritt 3: Pending-Status */}
             <div style={{
-              color: "#38bdf8", background: "#18181b",
-              borderRadius: 12, fontSize: 17.2,
-              padding: "20px 10px 15px 10px", textAlign: "center",
-              marginBottom: 13, fontWeight: 700, letterSpacing: 0.08
+              color: "#f87171", fontSize: 13.7, textAlign: "center",
+              marginBottom: 10, marginTop: 4, background: "#18181b", padding: 8, borderRadius: 7,
+              border: "1px solid #23262e"
             }}>
-              <div style={{ fontSize: 27, marginBottom: 7 }}>⏳</div>
-              <div>Geldeingang wird geprüft...</div>
-              <div style={{ fontSize: 15.7, margin: "12px 0 0 0", color: "#b1fbab" }}>
-                Sobald dein BTC auf der Blockchain bestätigt wurde, wird dein Guthaben <b>automatisch</b> gutgeschrieben.<br />
-                Du kannst dieses Fenster schließen.
-              </div>
+              <b>WICHTIG:</b> Das Guthaben wird <b>nur</b> automatisch gutgeschrieben,<br />
+              wenn der <u>exakte</u> Betrag (±1%) und die <b>richtige Adresse</b> genutzt wird.<br />
+              Falsche Beträge werden NICHT gutgeschrieben!
             </div>
+            {err && (
+              <div style={{ color: "#ff4d4f", marginBottom: 6, fontWeight: 700, textAlign: "center" }}>{err}</div>
+            )}
             <button
-              onClick={handleAbortDeposit}
+              onClick={cancelDeposit}
               style={{
-                width: "100%",
-                background: "#f87171",
-                color: "#fff",
-                padding: "12px 0",
-                border: "none",
-                borderRadius: 11,
-                fontWeight: 900,
-                fontSize: 15,
-                marginTop: 0,
-                cursor: "pointer",
-                boxShadow: "0 2px 10px #f8717115",
-                letterSpacing: 0.15,
-                marginBottom: 2
+                width: "100%", background: "#18181b", color: "#bababa",
+                padding: "11px 0", border: "none", borderRadius: 10,
+                fontWeight: 900, fontSize: 16, marginTop: 9,
+                cursor: "pointer", boxShadow: "0 2px 9px #2222",
+                letterSpacing: 0.19,
               }}
             >
               Einzahlung abbrechen
             </button>
-            <div style={{
-              fontSize: 14, color: "#bababa", textAlign: "center",
-              marginBottom: 0, marginTop: 4, lineHeight: 1.38
-            }}>
-              Bei Problemen wende dich bitte an den Support.
-            </div>
           </>
+        )}
+
+        {/* --- Step 1: Pending View --- */}
+        {step === 1 && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{
+              color: "#a3e635", fontSize: 22, fontWeight: 900, marginBottom: 13,
+            }}>Warte auf Einzahlung...</div>
+            <div style={{
+              fontSize: 15.7, color: "#bababa", marginBottom: 15,
+            }}>
+              Die Einzahlung wurde gespeichert.<br />
+              Das System prüft jede Minute, ob die Zahlung eingegangen ist.<br />
+              Nach Eingang wird dein Guthaben <b>automatisch</b> gutgeschrieben!
+            </div>
+            <div style={{
+              margin: "17px 0", color: "#38bdf8", fontWeight: 700, fontSize: 15,
+            }}>
+              Status: <span style={{ color: "#fff" }}>PENDING</span>
+            </div>
+            <button
+              onClick={cancelDeposit}
+              style={{
+                width: "100%", background: "#18181b", color: "#bababa",
+                padding: "12px 0", border: "none", borderRadius: 10,
+                fontWeight: 900, fontSize: 16, marginTop: 14,
+                cursor: "pointer", boxShadow: "0 2px 8px #2222",
+                letterSpacing: 0.18,
+              }}
+            >
+              Einzahlung abbrechen
+            </button>
+          </div>
         )}
       </div>
     </div>
