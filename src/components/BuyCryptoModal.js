@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../firebase";
 
 // Adresse & Anbieter
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
