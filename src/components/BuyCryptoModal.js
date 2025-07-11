@@ -6,8 +6,7 @@ import { db } from "../firebase";
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 const GUARDARIAN_URL = "https://guardarian.com";
 
-  const userSnap = await getDoc(userRef);
-  const userData = userSnap.exists() ? userSnap.data() : {};
+
 export default function BuyCryptoModal({ user, onClose }) {
   // Step: 0=Start, 1=Pending
   const [step, setStep] = useState(0);
@@ -50,6 +49,8 @@ export default function BuyCryptoModal({ user, onClose }) {
 
   // --- Start Einzahlung: in DB hinterlegen + Step wechseln ---
   async function startDeposit() {
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists() ? userSnap.data() : {};
     setErr("");
     const eur = parseFloat(amount);
     if (!eur || eur < 10) { setErr("Bitte mind. 10 € eingeben."); return; }
