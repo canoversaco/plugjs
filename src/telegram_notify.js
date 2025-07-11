@@ -26,8 +26,8 @@ app.post("/send-telegram", async (req, res) => {
   }
 });
 
-// Port: z. B. 3666
-app.listen(3666, () => {
-  console.log("Telegram Notify API läuft auf 3666");
+// Port: z. B. 3667
+app.listen(3667, () => {
+  console.log("Telegram Notify API läuft auf 3667");
 });
 
