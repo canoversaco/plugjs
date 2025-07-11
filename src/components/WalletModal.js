@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { fetchBtcPriceEUR } from "./btcApi";
+import BuyCryptoModal from "./BuyCryptoModal";
 
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
+// Dummy, hier kannst du echte Transaktionen einbinden!
 const dummyTx = [
   {
     time: Date.now() - 1000 * 3600 * 5,
@@ -17,357 +19,185 @@ const dummyTx = [
   },
 ];
 
-export default function WalletPage({
+export default function WalletModal({
   user,
   btcPrice: propBtcPrice,
-  onBuyCryptoClick,
-  onGoBack,
+  onClose,
 }) {
-  const [eur, setEur] = useState("");
-  const [btc, setBtc] = useState("");
   const [btcPrice, setBtcPrice] = useState(propBtcPrice || null);
+  const [showBuy, setShowBuy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [isHoveringBack, setIsHoveringBack] = useState(false);
-
-  const userBtc =
-    btcPrice && user?.guthaben
-      ? (user.guthaben / btcPrice).toFixed(8)
-      : "0.00000000";
 
   useEffect(() => {
     let active = true;
     if (!propBtcPrice) {
       fetchBtcPriceEUR().then((p) => active && setBtcPrice(p));
     }
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [propBtcPrice]);
 
-  function handleEurChange(e) {
-    const value = e.target.value.replace(",", ".");
-    if (value === "" || isNaN(value)) {
-      setEur("");
-      setBtc("");
-      return;
-    }
-    if (parseFloat(value) < 0) return;
-    setEur(value);
-  }
-
-  useEffect(() => {
-    const parsed = parseFloat(eur);
-    if (!eur || isNaN(parsed) || !btcPrice || parsed <= 0) {
-      setBtc("");
-      return;
-    }
-    setBtc((parsed / btcPrice).toFixed(8));
-  }, [eur, btcPrice]);
+  const userBtc =
+    btcPrice && user?.guthaben
+      ? (user.guthaben / btcPrice).toFixed(8)
+      : "0.00000000";
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(ADMIN_BTC_ADDRESS);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1000);
-  };
-
-  const handleBuy = () => {
-    const parsed = parseFloat(eur);
-    if (parsed > 0 && btc) {
-      if (onBuyCryptoClick) {
-        onBuyCryptoClick(parsed, btc);
-        setNotice("Bitte folge den weiteren Anweisungen.");
-      } else {
-        setNotice("Demo: Einzahlung ausgeführt!");
-      }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(ADMIN_BTC_ADDRESS).then(() => setCopied(true));
     } else {
-      setNotice("Bitte gültigen Betrag eingeben.");
+      // Fallback für alte Browser
+      const ta = document.createElement("textarea");
+      ta.value = ADMIN_BTC_ADDRESS;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); setCopied(true); } catch {}
+      document.body.removeChild(ta);
     }
-    setTimeout(() => setNotice(""), 2000);
+    setTimeout(() => setCopied(false), 1100);
   };
 
-  const validAmount = eur && !isNaN(parseFloat(eur)) && parseFloat(eur) > 0;
+  // Modal für Aufladen anzeigen
+  if (showBuy)
+    return (
+      <BuyCryptoModal
+        user={user}
+        onClose={() => setShowBuy(false)}
+      />
+    );
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg,#10121a 60%,#1b2330 100%)",
-        fontFamily: "Inter,Segoe UI,sans-serif",
-        margin: 0,
-        padding: 0,
+        minWidth: "100vw",
+        background: "radial-gradient(circle at 45% 40%, #222931 65%, #191e24 100%)",
+        fontFamily: "'Inter',sans-serif",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        position: "fixed",
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 3000,
+        overflowY: "auto",
       }}
+      onClick={onClose}
     >
-      {/* Verbesserter Header mit animiertem Zurück-Button */}
-      <header
+      <div
+        onClick={e => e.stopPropagation()}
         style={{
-          width: "100%",
-          padding: "0 0 18px 0",
-          background: "linear-gradient(94deg,#1b2330 90%,#1e293b 120%)",
-          boxShadow: "0 8px 24px #0007",
-          borderBottom: "1.5px solid #23262e33",
+          background: "linear-gradient(137deg, #23272e 89%, #38bdf822 100%)",
+          borderRadius: 24,
+          margin: "48px 0 24px 0",
+          padding: "34px 16px 28px 16px",
+          maxWidth: 420,
+          width: "97vw",
+          boxShadow: "0 10px 44px #000a, 0 1px 9px #38bdf822",
+          border: "1.5px solid #292933",
           position: "relative",
         }}
       >
-        <div
+        {/* Header */}
+        <button
+          onClick={onClose}
           style={{
-            maxWidth: 440,
-            margin: "0 auto",
-            padding: "26px 15px 0 15px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 10,
+            position: "absolute", right: 14, top: 14,
+            fontSize: 28, background: "rgba(37,40,54,0.75)", border: 0,
+            color: "#e5e7eb", fontWeight: 800, borderRadius: 10,
+            width: 38, height: 38, cursor: "pointer", zIndex: 2,
+            transition: "background 0.13s",
           }}
-        >
-          {/* Verbesserter Zurück-Button mit Animation */}
-          {onGoBack && (
-            <button
-              onClick={onGoBack}
-              onMouseEnter={() => setIsHoveringBack(true)}
-              onMouseLeave={() => setIsHoveringBack(false)}
-              style={{
-                position: "absolute",
-                left: 15,
-                top: 20,
-                background: "none",
-                border: 0,
-                color: isHoveringBack ? "#38bdf8" : "#e3ff64",
-                fontWeight: 900,
-                fontSize: 27,
-                padding: "5px 10px",
-                cursor: "pointer",
-                lineHeight: 1,
-                zIndex: 2,
-                transition: "all 0.2s ease",
-                borderRadius: 8,
-                transform: isHoveringBack ? "translateX(-5px)" : "translateX(0)",
-              }}
-              title="Zurück zur Startseite"
-            >
-              ←
-              <span 
-                style={{
-                  fontSize: 14,
-                  marginLeft: 5,
-                  opacity: isHoveringBack ? 1 : 0,
-                  transition: "opacity 0.2s ease",
-                  verticalAlign: "middle",
-                }}
-              >
-                Home
-              </span>
-            </button>
-          )}
+          aria-label="Schließen"
+        >×</button>
 
-          <div
-            style={{
-              fontWeight: 800,
-              fontSize: 18,
-              letterSpacing: 0.12,
-              color: "#e3ff64",
-              textShadow: "0 3px 20px #e3ff6422",
-              marginBottom: 1,
-            }}
-          >
-            {user?.username ? `Hi, ${user.username}!` : "Wallet"}
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <div style={{
+            fontWeight: 900, fontSize: 17.7, letterSpacing: 0.13, color: "#e3ff64",
+            textShadow: "0 2px 20px #e3ff6420", marginBottom: 5
+          }}>
+            {user?.username ? `Wallet von ${user.username}` : "Deine Wallet"}
           </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 3,
-              margin: "8px 0 0 0",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 36,
-                fontWeight: 900,
-                letterSpacing: 1,
-                color: "#fff",
-                textShadow: "0 2px 15px #10121a44",
-              }}
-            >
-              {user?.guthaben?.toFixed(2) ?? "0.00"}
-              <span
-                style={{
-                  color: "#e3ff64",
-                  fontWeight: 700,
-                  fontSize: 20,
-                  marginLeft: 6,
-                }}
-              >
-                €
-              </span>
-            </span>
-            <span style={{ color: "#38bdf8", fontWeight: 700, fontSize: 16 }}>
-              {userBtc} BTC
-            </span>
+          <div style={{
+            fontSize: 38, fontWeight: 900, color: "#fff",
+            letterSpacing: 0.5, textShadow: "0 2px 15px #10121a30"
+          }}>
+            {user?.guthaben?.toFixed(2) ?? "0.00"}
+            <span style={{ color: "#e3ff64", fontWeight: 800, fontSize: 20, marginLeft: 6 }}>€</span>
           </div>
-          <span
-            style={{
-              fontSize: 13.4,
-              color: "#94a3b8",
-              fontWeight: 500,
-              marginTop: 5,
-            }}
-          >
+          <div style={{
+            color: "#38bdf8", fontWeight: 700, fontSize: 16,
+            marginTop: -3, marginBottom: 1,
+          }}>
+            ≈ {userBtc} BTC
+          </div>
+          <div style={{
+            fontSize: 13.7, color: "#bdbdbd", fontWeight: 500, marginTop: 3,
+          }}>
             {btcPrice ? (
-              <>
-                BTC Kurs:{" "}
-                <b style={{ color: "#e3ff64" }}>
-                  {btcPrice.toLocaleString("de-DE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  €
-                </b>
-              </>
-            ) : (
-              "BTC Kurs wird geladen..."
-            )}
-          </span>
+              <>BTC Kurs: <b style={{ color: "#e3ff64" }}>
+                {btcPrice.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+              </b></>
+            ) : <>BTC Kurs wird geladen…</>}
+          </div>
         </div>
-      </header>
 
-      {/* ACTIONS */}
-      <main
-        style={{
-          maxWidth: 440,
-          margin: "0 auto",
-          padding: "20px 0 0 0",
-        }}
-      >
-        {/* AUFLADEN */}
+        {/* Aufladen */}
         <section
           style={{
             background: "#191d23",
-            borderRadius: 20,
-            margin: "0 12px 20px 12px",
-            padding: "22px 16px 14px 16px",
-            boxShadow: "0 6px 22px #0006",
-            border: "1.5px solid #2dd4bf11",
+            borderRadius: 18,
+            marginBottom: 23,
+            padding: "20px 16px 14px 16px",
+            boxShadow: "0 3px 12px #0005",
+            border: "1.5px solid #38bdf844",
             display: "flex",
             flexDirection: "column",
             alignItems: "stretch",
-            gap: 12,
+            gap: 10,
           }}
         >
           <div
             style={{
-              fontWeight: 900,
-              color: "#a3e635",
-              fontSize: 17,
-              letterSpacing: 0.15,
-              marginBottom: 3,
+              fontWeight: 900, color: "#a3e635", fontSize: 17.2,
+              letterSpacing: 0.11, marginBottom: 3,
+              textAlign: "center"
             }}
           >
-            Wallet aufladen
+            Guthaben aufladen
           </div>
-          <div
+          <button
+            onClick={() => setShowBuy(true)}
             style={{
-              display: "flex",
-              gap: 7,
-              alignItems: "center",
-              marginBottom: 0,
+              width: "100%",
+              background: "linear-gradient(94deg,#e3ff64 40%,#38bdf8 180%)",
+              color: "#191d23", padding: "15px 0", border: 0, borderRadius: 13,
+              fontWeight: 900, fontSize: 18, boxShadow: "0 2px 10px #e3ff6422",
+              cursor: "pointer", textShadow: "0 2px 10px #e3ff6430", margin: "7px 0 0 0",
+              transition: "background 0.15s, box-shadow 0.13s",
+              letterSpacing: 0.14,
             }}
           >
-            <input
-              type="number"
-              min="1"
-              placeholder="€ Betrag"
-              value={eur}
-              onChange={handleEurChange}
-              style={{
-                flex: 1,
-                padding: "11px 10px",
-                fontSize: 16.4,
-                borderRadius: 10,
-                border: "1.5px solid #222a37",
-                background: "#12151b",
-                color: "#e3ff64",
-                fontWeight: 800,
-                outline: "none",
-                textAlign: "center",
-                boxShadow: "0 2px 8px #e3ff6431",
-                letterSpacing: 0.15,
-              }}
-            />
-            <button
-              onClick={handleBuy}
-              style={{
-                minWidth: 118,
-                background: "linear-gradient(94deg,#e3ff64 55%,#38bdf8 140%)",
-                color: "#191d23",
-                padding: "12px 0",
-                border: 0,
-                borderRadius: 11,
-                fontWeight: 900,
-                fontSize: 16,
-                boxShadow: "0 3px 12px #e3ff6421",
-                cursor: validAmount ? "pointer" : "not-allowed",
-                opacity: validAmount ? 1 : 0.65,
-                transition: "all 0.15s",
-                textShadow: "0 2px 10px #e3ff6430",
-              }}
-              disabled={!validAmount}
-            >
-              Einzahlen
-            </button>
+            + Guthaben aufladen
+          </button>
+          <div style={{ marginTop: 13, textAlign: "center", fontSize: 14.1, color: "#bababa" }}>
+            Nach der Einzahlung steht dir das Guthaben in wenigen Minuten zur Verfügung!
           </div>
-          {btc && validAmount && (
-            <div
-              style={{
-                color: "#38bdf8",
-                fontWeight: 700,
-                fontSize: 14,
-                marginTop: 0,
-                textAlign: "right",
-                minHeight: 18,
-              }}
-            >
-              {eur} € ≈ {btc} BTC
-            </div>
-          )}
-          {notice && (
-            <div
-              style={{
-                color: "#e3ff64",
-                fontWeight: 700,
-                fontSize: 14,
-                marginTop: 3,
-                minHeight: 19,
-              }}
-            >
-              {notice}
-            </div>
-          )}
         </section>
 
-        {/* BTC ADRESSE */}
+        {/* BTC Adresse */}
         <section
           style={{
-            background: "#161a23",
-            borderRadius: 20,
-            margin: "0 12px 18px 12px",
-            padding: "18px 16px 13px 16px",
-            boxShadow: "0 6px 18px #0003",
+            background: "#181a1e",
+            borderRadius: 15,
+            marginBottom: 22,
+            padding: "16px 13px 13px 13px",
+            boxShadow: "0 1px 7px #0003",
             border: "1.2px solid #38bdf822",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 7,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
           }}
         >
           <div
             style={{
-              color: "#38bdf8",
-              fontWeight: 800,
-              fontSize: 15.5,
-              marginBottom: 2,
-              letterSpacing: 0.07,
+              color: "#38bdf8", fontWeight: 800, fontSize: 15.3, marginBottom: 2, letterSpacing: 0.07,
               textTransform: "uppercase",
             }}
           >
@@ -375,20 +205,9 @@ export default function WalletPage({
           </div>
           <div
             style={{
-              fontFamily: "monospace",
-              background: "#1b1d25",
-              padding: "8px 9px",
-              borderRadius: 8,
-              fontSize: 14.7,
-              color: "#e3ff64",
-              letterSpacing: 0.1,
-              wordBreak: "break-all",
-              userSelect: "all",
-              textAlign: "center",
-              width: "100%",
-              marginBottom: 2,
-              border: "1.5px solid #23262e",
-              fontWeight: 700,
+              fontFamily: "monospace", background: "#1b1d25", padding: "7px 7px",
+              borderRadius: 8, fontSize: 14.8, color: "#e3ff64", letterSpacing: 0.13, wordBreak: "break-all",
+              userSelect: "all", textAlign: "center", width: "100%", border: "1.5px solid #23262e", fontWeight: 700,
             }}
           >
             {ADMIN_BTC_ADDRESS}
@@ -402,11 +221,11 @@ export default function WalletPage({
               borderRadius: 8,
               fontWeight: 800,
               fontSize: 14.5,
-              padding: "8px 0",
-              width: 180,
+              padding: "7px 0",
+              width: 176,
               cursor: "pointer",
               boxShadow: copied ? "0 0 0 4px #e3ff6420" : "none",
-              marginTop: 2,
+              marginTop: 1,
               transition: "all 0.12s",
             }}
           >
@@ -419,22 +238,23 @@ export default function WalletPage({
               marginTop: 4,
               fontWeight: 500,
               opacity: 0.88,
+              textAlign: "center",
+              display: "block"
             }}
           >
-            Überweise BTC an diese Adresse
+            Sende BTC an diese Adresse.
             <br />
-            Dein Guthaben ist <b>in wenigen Minuten</b> da.
+            Nur für Einzahlungen auf das Wallet!
           </span>
         </section>
 
-        {/* TRANSAKTIONEN */}
+        {/* Transaktionsliste */}
         <section
           style={{
             background: "#191d23",
-            borderRadius: 20,
-            margin: "0 12px 0 12px",
-            padding: "19px 13px 9px 13px",
-            boxShadow: "0 2px 8px #10121a0a",
+            borderRadius: 16,
+            padding: "15px 10px 10px 13px",
+            boxShadow: "0 1px 7px #10121a0a",
             border: "1.1px solid #23262e",
           }}
         >
@@ -442,13 +262,13 @@ export default function WalletPage({
             style={{
               fontWeight: 800,
               color: "#38bdf8",
-              fontSize: 16,
-              marginBottom: 11,
+              fontSize: 15.5,
+              marginBottom: 10,
               letterSpacing: 0.13,
               textTransform: "uppercase",
             }}
           >
-            Transaktionen
+            Letzte Transaktionen
           </div>
           {dummyTx && dummyTx.length > 0 ? (
             <ul
@@ -457,10 +277,10 @@ export default function WalletPage({
                 margin: 0,
                 padding: 0,
                 color: "#fff",
-                fontSize: 14.4,
+                fontSize: 14.1,
                 display: "flex",
                 flexDirection: "column",
-                gap: 8,
+                gap: 7,
               }}
             >
               {dummyTx.slice(0, 7).map((t, i) => (
@@ -474,9 +294,9 @@ export default function WalletPage({
                       "4px solid " +
                       (t.type === "Lotto-Gewinn" ? "#38bdf8" : "#e3ff64"),
                     paddingLeft: 12,
-                    background: "#181a1e",
+                    background: "#191a22",
                     borderRadius: 10,
-                    boxShadow: "0 1px 8px #0003",
+                    boxShadow: "0 1px 8px #0002",
                   }}
                 >
                   <span style={{ fontSize: 17, marginRight: 3 }}>
@@ -534,7 +354,7 @@ export default function WalletPage({
             </div>
           )}
         </section>
-      </main>
+      </div>
     </div>
   );
 }
