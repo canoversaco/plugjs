@@ -6,6 +6,8 @@ import { db } from "../firebase";
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 const GUARDARIAN_URL = "https://guardarian.com";
 
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists() ? userSnap.data() : {};
 export default function BuyCryptoModal({ user, onClose }) {
   // Step: 0=Start, 1=Pending
   const [step, setStep] = useState(0);
@@ -14,8 +16,6 @@ export default function BuyCryptoModal({ user, onClose }) {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
-  const userSnap = await getDoc(userRef);
-  const userData = userSnap.exists() ? userSnap.data() : {};
   
   // --- EUR zu BTC Vorschau (Guardarian liefert keine API, also quick fetch von coinmarketcap)
   const fetchBtcEstimate = async (eur) => {
