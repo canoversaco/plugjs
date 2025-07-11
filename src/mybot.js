@@ -1,39 +1,61 @@
 const TelegramBot = require("node-telegram-bot-api");
-const axios = require("axios"); // Nur falls du Firestore oder Backend ansteuern willst
+const axios = require("axios"); // Damit wir per HTTP an dein Backend senden können
 
 const TELEGRAM_TOKEN = "7459654349:AAE3UmBpba5o8eXMOFtbLeZwlRUOiGsl5z8";
+const API_URL = "http://185.198.234.220/api/save-telegram-id"; // <-- Passe hier ggf. deine Backend-URL an
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
-// /start command
-bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
+// /start command mit optionalem payload
+bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
-  // Optionale Payload (z. B. plug_<userId>)
-  const payload = match[1];
+  const payload = match[1]; // alles nach /start (z.B. plug_abc123)
 
-  // Hier kannst du deine Logik einbauen:
-  // Zum Beispiel Firestore: userId aus payload auslesen und chatId speichern
-  // Oder REST-API anpingen, um Telegram-ChatId zu speichern
+  // Erwartetes Format: plug_USERID
   if (payload && payload.startsWith("plug_")) {
-    const userId = payload.replace("plug_", "");
-    // Sende die userId + chatId an dein Backend oder speichere sie in Firestore
-    // Beispiel: Anfrage an eigene API
+    const userId = payload.replace("plug_", "").trim();
+
+    // Schicke die userId + chatId an dein Backend, damit du später Notifications schicken kannst!
     try {
-      await axios.post("http://185.198.234.220/api/save-telegram-id", {
+      await axios.post(API_URL, {
         userId,
         chatId,
       });
-      bot.sendMessage(
+      await bot.sendMessage(
         chatId,
-        `✅ Telegram-Benachrichtigungen sind jetzt aktiviert!`
+        `✅ Telegram-Benachrichtigungen wurden erfolgreich aktiviert!\nDu bekommst jetzt wichtige Updates direkt hier.`
       );
     } catch (e) {
-      bot.sendMessage(chatId, `❌ Fehler beim Verknüpfen: ${e.toString()}`);
+      await bot.sendMessage(
+        chatId,
+        `❌ Fehler beim Verknüpfen mit der App: ${e.response?.data?.message || e.message}`
+      );
     }
   } else {
-    bot.sendMessage(
+    // Fallback, falls jemand ohne App-Link den Bot startet
+    await bot.sendMessage(
       chatId,
-      `Willkommen beim PlugBot! Nutze den Link aus der App, um Benachrichtigungen zu aktivieren.`
+      `👋 Willkommen beim PlugBot! Bitte aktiviere Benachrichtigungen über den Link in deiner App, damit wir dich eindeutig zuordnen können.`
     );
   }
 });
+
+// (Optional) Reagiere auf /help oder andere Commands
+bot.onText(/\/help/, (msg) => {
+  bot.sendMessage(
+    msg.chat.id,
+    `Verwende den Aktivierungs-Link aus der App, um Telegram-Benachrichtigungen zu erhalten.`
+  );
+});
+
+// (Optional) Zeige an, wenn Nachrichten empfangen werden
+bot.on("message", (msg) => {
+  if (msg.text && !msg.text.startsWith("/")) {
+    bot.sendMessage(
+      msg.chat.id,
+      `ℹ️ Dies ist ein reiner Benachrichtigungs-Bot. Nutze den Aktivierungs-Link aus der App!`
+    );
+  }
+});
+
+console.log("PlugBot läuft und wartet auf /start-Nachrichten.");
