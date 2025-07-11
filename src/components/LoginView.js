@@ -68,7 +68,7 @@ export default class LoginView extends React.Component {
               lineHeight: "1.3em",
             }}
           >
-            ⚠️ Es können vereinzelnt Probleme bei der Anmeldung entstehen. Falls du Probleme hast, rufe im Internet Browser folgendes auf: "http://185.198.234.220:3000". 
+            🎁 Mystery Box Update! Öffne eine Mystery Box und lass dich überraschen! Es bestehen keine Anmeldeprobleme mehr und die App kann wie gewohnt weiter genutzt werden. 
           </div>
 
           <div
