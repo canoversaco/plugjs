@@ -57,11 +57,34 @@ export default function BuyCryptoModal({ user, amount, btc, onClose }) {
     }
   }, [step, user, eur, calcBtc]);
 
-  function handleCopy() {
-    navigator.clipboard.writeText(ADMIN_BTC_ADDRESS);
-    setCopied(true);
+function handleCopy() {
+  // Moderner Weg:
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    navigator.clipboard.writeText(ADMIN_BTC_ADDRESS)
+      .then(() => setCopied(true))
+      .catch(() => fallbackCopy());
+    setTimeout(() => setCopied(false), 1200);
+  } else {
+    fallbackCopy();
+  }
+  
+  function fallbackCopy() {
+    // Fallback: Textfeld trick
+    const textArea = document.createElement("textarea");
+    textArea.value = ADMIN_BTC_ADDRESS;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setCopied(true);
+    } catch (err) {
+      setCopied(false);
+      alert("Copy nicht unterstützt. Bitte Adresse manuell kopieren.");
+    }
+    document.body.removeChild(textArea);
     setTimeout(() => setCopied(false), 1200);
   }
+}
 
   function handleAbortDeposit() {
     // Optional: Informiere Backend, dass die offene Einzahlung abgebrochen wurde (ggf. openDeposit löschen)
