@@ -54,8 +54,10 @@ export default function OrderView({
     fetchKurs();
   }, []);
 
+  // Gratis-Produkte werden ignoriert beim Preis
   const warenkorbPreis = warenkorb.reduce((sum, item) => {
     const p = produkte.find((pr) => pr.id === item.produktId);
+    if (item.gratis) return sum;
     return sum + (p?.preis || 0) * item.menge;
   }, 0);
 
@@ -98,6 +100,7 @@ export default function OrderView({
       ? (_endpreis / btcKurs).toFixed(6)
       : "…";
 
+  // Prüfe Bestand (auch für gratis Produkte)
   const notEnoughStock = warenkorb.some((item) => {
     const p = produkte.find((pr) => pr.id === item.produktId);
     return !p || p.bestand < item.menge;
@@ -235,13 +238,31 @@ export default function OrderView({
       <div style={{ marginBottom: 13 }}>
         {warenkorb.map((item) => {
           const p = produkte.find((pr) => pr.id === item.produktId);
+          const istGratis = !!item.gratis;
           return (
-            <div key={item.produktId} style={{ fontSize: 15 }}>
-              {p?.name || "?"} × {item.menge} (
-              {(p?.preis * item.menge).toFixed(2)} €)&nbsp;
+            <div
+              key={item.produktId || item.id}
+              style={{ fontSize: 15, marginBottom: 7 }}
+            >
+              {p?.name || "?"} × {item.menge}{" "}
+              <b>
+                (
+                {istGratis
+                  ? "0,00 €"
+                  : ((p?.preis || 0) * item.menge).toFixed(2) + " €"}
+                )
+              </b>
               <span style={{ color: "#a1a1aa" }}>
+                {" "}
                 (Bestand: {p?.bestand ?? 0})
               </span>
+              {istGratis && (
+                <div
+                  style={{ color: "#a3e635", fontSize: 14, fontWeight: 700 }}
+                >
+                  Kostenlos durch Inventar-Gewinn!
+                </div>
+              )}
             </div>
           );
         })}
@@ -332,6 +353,11 @@ export default function OrderView({
       {/* Endpreis */}
       <div style={{ marginBottom: 13, fontWeight: 700, fontSize: 17 }}>
         Zu zahlender Endpreis: {_endpreis.toFixed(2)} €
+        {warenkorb.some((item) => item.gratis) && (
+          <div style={{ color: "#a3e635", fontSize: 14, fontWeight: 700 }}>
+            Produkte aus deinem Inventar sind automatisch kostenlos!
+          </div>
+        )}
       </div>
 
       {/* Zahlungsart */}
