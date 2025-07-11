@@ -47,7 +47,22 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// ... BuyCryptoModal wie gehabt ...
+// -- Telegram Notification zentral --
+async function sendTelegramNotification(user, text) {
+  if (!user?.telegramChatId) return;
+  try {
+    await fetch("http://185.198.234.220:3666/send-telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chatId: user.telegramChatId,
+        text,
+      }),
+    });
+  } catch (e) {
+    // Ignore
+  }
+}
 
 export default class App extends React.Component {
   state = {
@@ -186,6 +201,81 @@ export default class App extends React.Component {
     }
   };
 
+  // ---------------------- //
+  // --- Notifications ---- //
+  // ---------------------- //
+
+  // Chat Nachricht: ruft diese Methode nach dem Abspeichern einer neuen Nachricht auf!
+  handleSendChatMessage = async (orderId, text, senderId) => {
+    const orderRef = doc(db, "orders", orderId);
+    const orderSnap = await getDoc(orderRef);
+    const order = orderSnap.data();
+    const users = this.state.users;
+    const sender = users.find(u => u.id === senderId);
+
+    // Empfänger ermitteln
+    let empfaenger;
+    if (order.kurierId && senderId === order.kurierId) {
+      // Kurier schreibt -> Kunde benachrichtigen
+      empfaenger = users.find(u => u.username === order.kunde);
+    } else {
+      // Kunde schreibt -> Kurier/Admin benachrichtigen
+      empfaenger = users.find(u => u.id === order.kurierId) || users.find(u => (u.rolle === "admin" || u.role === "admin"));
+    }
+
+    // Telegram schicken
+    if (empfaenger && empfaenger.telegramChatId) {
+      await sendTelegramNotification(
+        empfaenger,
+        `📩 Neue Chatnachricht in deiner Bestellung!\n\n"${text}"`
+      );
+    }
+  };
+
+  // Order-Status ändern + Telegram
+  handleOrderStatusUpdate = async (orderId, status) => {
+    const orderRef = doc(db, "orders", orderId);
+    await updateDoc(orderRef, { status });
+    const orderSnap = await getDoc(orderRef);
+    const order = orderSnap.data();
+    const kunde = this.state.users.find(u => u.username === order.kunde);
+    if (kunde?.telegramChatId) {
+      await sendTelegramNotification(
+        kunde,
+        `🚚 Dein Bestellstatus hat sich geändert: ${status.toUpperCase()}`
+      );
+    }
+  };
+
+  // Standort ändern + Telegram
+  handleOrderLocationUpdate = async (orderId, neuerStandort) => {
+    const orderRef = doc(db, "orders", orderId);
+    await updateDoc(orderRef, { standort: neuerStandort });
+    const orderSnap = await getDoc(orderRef);
+    const order = orderSnap.data();
+    const kunde = this.state.users.find(u => u.username === order.kunde);
+    if (kunde?.telegramChatId) {
+      await sendTelegramNotification(
+        kunde,
+        `📍 Dein Treffpunkt/Standort wurde aktualisiert!\nNeuer Standort: ${neuerStandort}`
+      );
+    }
+  };
+
+  // Lotto-Gewinn + Telegram
+  handleLottoWin = async (user, gewinn) => {
+    if (user.telegramChatId) {
+      await sendTelegramNotification(
+        user,
+        `🎉 Glückwunsch! Du hast im Lotto ${gewinn} gewonnen!`
+      );
+    }
+  };
+
+  // ---------------------- //
+  // Rest bleibt wie gehabt //
+  // ---------------------- //
+
   produktHinzufügen = async (produkt) => {
     await addDoc(collection(db, "produkte"), produkt);
   };
@@ -269,9 +359,7 @@ export default class App extends React.Component {
   };
 
   handleBestellungAbsenden = async (orderData) => {
-    const { user, produkte } = this.state;
-    // NEU: immer den warenkorb aus orderData nehmen!
-    const warenkorb = orderData.warenkorb ?? [];
+    const { user, warenkorb, produkte } = this.state;
 
     for (let item of warenkorb) {
       const p = produkte.find((pr) => pr.id === item.produktId);
@@ -304,7 +392,7 @@ export default class App extends React.Component {
 
     await this.bestellungHinzufügen({
       kunde: user.username,
-      warenkorb, // <-- KORREKT!
+      warenkorb,
       gesamt: orderData.gesamt ?? 0,
       rabatt: rabatt,
       endpreis: zuZahlen,
@@ -350,23 +438,19 @@ export default class App extends React.Component {
     });
   };
 
-  // INVENTAR -> OrderView für Gratis-Gewinne
   handleOrderFromInventory = (produkt) => {
-    // produkt ist ein Einzelprodukt (aus MysteryBox/Inventar)
     this.setState({
-      warenkorbFromInventory: [{ produktId: produkt.id, menge: 1, gratis: true }],
+      warenkorbFromInventory: [
+        { produktId: produkt.id, menge: 1, gratis: true },
+      ],
       view: "order_inventory",
     });
   };
 
-  // INVENTAR -> Umtauschen
   handleSwapFromInventory = async (produkt) => {
     const { user } = this.state;
     if (!user || !produkt) return;
-    // Beispiel: Umtauschwert ist immer der Produktpreis!
     const guthabenNeu = (user.guthaben || 0) + (produkt.preis || 0);
-
-    // Inventar filtern:
     const userRef = doc(db, "users", user.id);
     const userSnap = await getDoc(userRef);
     let inventar = userSnap.data()?.inventory || [];
@@ -378,7 +462,6 @@ export default class App extends React.Component {
     });
   };
 
-  // ZUM INVENTAR springen
   handleGoInventar = () => {
     this.setState({ view: "inventar" });
   };
@@ -409,6 +492,7 @@ export default class App extends React.Component {
           user={user}
           order={chatOrder}
           onClose={() => this.setState({ chatOrder: null })}
+          onSendMessage={this.handleSendChatMessage} // wichtig!
         />
       );
 
@@ -464,7 +548,6 @@ export default class App extends React.Component {
         />
       );
 
-    // INVENTAR: mit Direkt-Order
     if (view === "inventar" && user) {
       return (
         <UserInventory
@@ -477,7 +560,6 @@ export default class App extends React.Component {
       );
     }
 
-    // OrderView für Gratis-Produkt aus Inventar/MysteryBox
     if (view === "order_inventory" && user && warenkorbFromInventory) {
       return (
         <OrderView
@@ -499,6 +581,7 @@ export default class App extends React.Component {
           user={user}
           users={users}
           onGoBack={() => this.setState({ view: "home" })}
+          onLottoWin={this.handleLottoWin} // wichtig!
         />
       );
 
@@ -514,7 +597,6 @@ export default class App extends React.Component {
         />
       );
 
-    // Normale Bestellung aus Warenkorb
     if (view === "order" && user)
       return (
         <OrderView
@@ -558,7 +640,6 @@ export default class App extends React.Component {
         />
       );
 
-    // Boxen mit Direkt-Order, Swap, Inventar-Nav
     if (view === "boxen" && user) {
       if (!user.id || user.guthaben === undefined) {
         console.error("User-Objekt ist nicht vollständig:", user);
