@@ -3,21 +3,6 @@ import { fetchBtcPriceEUR } from "./btcApi";
 import BuyCryptoModal from "./BuyCryptoModal";
 
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
-// Dummy, hier kannst du echte Transaktionen einbinden!
-const dummyTx = [
-  {
-    time: Date.now() - 1000 * 3600 * 5,
-    amount: 25,
-    type: "Einzahlung",
-    status: "Bestätigt",
-  },
-  {
-    time: Date.now() - 1000 * 3600 * 30,
-    amount: 13.7,
-    type: "Lotto-Gewinn",
-    status: "Bestätigt",
-  },
-];
 
 export default function WalletModal({
   user,
@@ -56,14 +41,20 @@ export default function WalletModal({
     setTimeout(() => setCopied(false), 1100);
   };
 
-  // Modal für Aufladen anzeigen
+  // Zeigt das BuyCryptoModal
   if (showBuy)
     return (
       <BuyCryptoModal
         user={user}
+        btcPrice={btcPrice}
         onClose={() => setShowBuy(false)}
       />
     );
+
+  // Firestore-Transaktionen
+  const txList = user?.btc_deposits
+    ? [...user.btc_deposits].reverse().slice(0, 7)
+    : [];
 
   return (
     <div
@@ -242,9 +233,8 @@ export default function WalletModal({
               display: "block"
             }}
           >
-            Sende BTC an diese Adresse.
-            <br />
-            Nur für Einzahlungen auf das Wallet!
+            Sende BTC an diese Adresse.<br />
+            <b>Wichtig:</b> Nur Zahlungen auf diese Adresse werden automatisch erkannt und als Guthaben gutgeschrieben.
           </span>
         </section>
 
@@ -270,7 +260,7 @@ export default function WalletModal({
           >
             Letzte Transaktionen
           </div>
-          {dummyTx && dummyTx.length > 0 ? (
+          {txList.length > 0 ? (
             <ul
               style={{
                 listStyle: "none",
@@ -283,7 +273,7 @@ export default function WalletModal({
                 gap: 7,
               }}
             >
-              {dummyTx.slice(0, 7).map((t, i) => (
+              {txList.map((t, i) => (
                 <li
                   key={i}
                   style={{
@@ -292,7 +282,7 @@ export default function WalletModal({
                     gap: 13,
                     borderLeft:
                       "4px solid " +
-                      (t.type === "Lotto-Gewinn" ? "#38bdf8" : "#e3ff64"),
+                      (t.gutgeschrieben ? "#e3ff64" : "#f59e42"),
                     paddingLeft: 12,
                     background: "#191a22",
                     borderRadius: 10,
@@ -300,10 +290,12 @@ export default function WalletModal({
                   }}
                 >
                   <span style={{ fontSize: 17, marginRight: 3 }}>
-                    {t.type === "Lotto-Gewinn" ? "🏆" : "💸"}
+                    {t.gutgeschrieben ? "💸" : "⏳"}
                   </span>
                   <span style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 800 }}>{t.type}</span>
+                    <span style={{ fontWeight: 800 }}>
+                      Einzahlung
+                    </span>
                     <span
                       style={{
                         color: "#a1a1aa",
@@ -312,30 +304,32 @@ export default function WalletModal({
                         fontSize: 12.5,
                       }}
                     >
-                      {new Date(t.time).toLocaleDateString("de-DE", {
-                        day: "2-digit",
-                        month: "2-digit",
-                      })}{" "}
-                      {new Date(t.time).toLocaleTimeString("de-DE", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {t.Timestamp
+                        ? new Date(t.Timestamp).toLocaleDateString("de-DE", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          }) +
+                          " " +
+                          new Date(t.Timestamp).toLocaleTimeString("de-DE", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
                     </span>
                   </span>
                   <span>
-                    <b style={{ color: t.amount > 0 ? "#e3ff64" : "#f87171" }}>
-                      {t.amount > 0 ? "+" : ""}
-                      {t.amount.toFixed(2)} €
+                    <b style={{ color: "#e3ff64" }}>
+                      +{t.eurValue?.toFixed(2) ?? "?"} €
                     </b>
                     <span
                       style={{
-                        color: t.status === "Bestätigt" ? "#22c55e" : "#f59e42",
+                        color: t.gutgeschrieben ? "#22c55e" : "#f59e42",
                         fontWeight: 700,
                         marginLeft: 7,
                         fontSize: 12,
                       }}
                     >
-                      {t.status}
+                      {t.gutgeschrieben ? "Bestätigt" : "Pending"}
                     </span>
                   </span>
                 </li>
@@ -350,7 +344,7 @@ export default function WalletModal({
                 padding: 10,
               }}
             >
-              Noch keine Transaktionen.
+              Noch keine Einzahlungen.
             </div>
           )}
         </section>
