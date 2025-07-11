@@ -236,7 +236,51 @@ export default function HomeView({
           <Wallet size={26} />
         </button>
       </div>
-
+      {!user.telegramChatId ? (
+        <div style={{ marginTop: 7, marginBottom: 7 }}>
+          <button
+            style={{
+              background: "#229ED9",
+              color: "#fff",
+              border: 0,
+              borderRadius: 7,
+              padding: "9px 16px",
+              fontWeight: 800,
+              fontSize: 15.5,
+              cursor: "pointer",
+              boxShadow: "0 2px 10px #229ED922",
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              letterSpacing: 0.09,
+            }}
+            onClick={() => {
+              // Telegram-Username deines Bots:
+              const tgBotName = "PlugApp_bot"; // z.B. plugbenachrichtigungsbot
+              const url = `https://t.me/${tgBotName}?start=plug_${user.id}`;
+              window.open(url, "_blank");
+            }}
+          >
+            <span style={{ fontSize: 21 }}>📲</span>
+            Telegram-Benachrichtigungen aktivieren
+          </button>
+          <div style={{ fontSize: 12.5, color: "#229ED9", marginTop: 2 }}>
+            Erhalte wichtige Benachrichtigungen direkt auf Telegram!
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            marginTop: 7,
+            marginBottom: 7,
+            color: "#229ED9",
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          ✅ Telegram Benachrichtigungen aktiviert!
+        </div>
+      )}
       <div
         style={{
           maxWidth: 630,
