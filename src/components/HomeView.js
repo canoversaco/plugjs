@@ -9,6 +9,7 @@ import {
   Truck,
   Bitcoin,
   Gift,
+  Boxes,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -68,6 +69,16 @@ const ACTIONS = [
     action: "onGotoMysteryBoxen",
     animate: true,
   },
+  // --- INVENTAR BUTTON (NEU) ---
+  {
+    id: "inventar",
+    label: "Inventar",
+    icon: <Boxes size={26} />,
+    color: "#fff",
+    bg: "linear-gradient(120deg,#38bdf8 75%,#a3e63566 100%)",
+    border: "2px solid #38bdf8",
+    action: "onGotoInventar",
+  },
   // -------------------------
   {
     id: "crypto",
@@ -112,15 +123,15 @@ const ACTIONS = [
 const DEMO_BROADCASTS = [
   {
     id: 1,
-    text: "🛒 Schaue dir die neuen Wochen-/Monatspässe an und fange an zu sparen!",
+    text: "🎁 Mystery Box Update: Öffne eine Mystery Box und lass dich überraschen!",
   },
   {
     id: 2,
-    text: "🔴 Nimm an der wöchentlichen Lotto Ziehung teil!",
+    text: "🛒 Schaue dir die neuen Wochen-/Monatspässe an und fange an zu sparen!",
   },
   {
     id: 3,
-    text: "⚡ Krypto Update! Jetzt 5€ Krypto-Guthaben sichern im Wallet (oben rechts).",
+    text: "🔴 Nimm an der wöchentlichen Lotto Ziehung teil!",
   },
 ];
 
@@ -138,7 +149,8 @@ export default function HomeView({
   onWalletClick,
   onBuyCryptoClick,
   onGotoLotto,
-  onGotoMysteryBoxen, // <-- NEU: Muss im Parent (App.js) gesetzt werden!
+  onGotoMysteryBoxen,
+  onGotoInventar, // <-- WICHTIG: Wird vom App.js übergeben!
 }) {
   const [broadcasts, setBroadcasts] = useState(DEMO_BROADCASTS);
 
@@ -162,6 +174,34 @@ export default function HomeView({
       (a.role === "admin" && role === "admin") ||
       (a.role === "kurier" && (role === "kurier" || role === "admin"))
   );
+
+  // Action Handler zuordnen
+  const handleAction = (action) => {
+    switch (action) {
+      case "onGotoMenu":
+        return onGotoMenu;
+      case "onGotoOrders":
+        return onGotoOrders;
+      case "onGotoAdmin":
+        return onGotoAdmin;
+      case "onGotoKurier":
+        return onGotoKurier;
+      case "onGotoPass":
+        return onGotoPass;
+      case "onBuyCryptoClick":
+        return onBuyCryptoClick;
+      case "onGotoLotto":
+        return onGotoLotto;
+      case "onGotoMysteryBoxen":
+        return onGotoMysteryBoxen;
+      case "onGotoInventar":
+        return onGotoInventar;
+      case "onLogout":
+        return onLogout;
+      default:
+        return undefined;
+    }
+  };
 
   return (
     <div
@@ -401,27 +441,7 @@ export default function HomeView({
             a.animate ? (
               <motion.button
                 key={a.id}
-                onClick={
-                  a.action === "onGotoMenu"
-                    ? onGotoMenu
-                    : a.action === "onGotoOrders"
-                    ? onGotoOrders
-                    : a.action === "onGotoAdmin"
-                    ? onGotoAdmin
-                    : a.action === "onGotoKurier"
-                    ? onGotoKurier
-                    : a.action === "onGotoPass"
-                    ? onGotoPass
-                    : a.action === "onBuyCryptoClick"
-                    ? onBuyCryptoClick
-                    : a.action === "onGotoLotto"
-                    ? onGotoLotto
-                    : a.action === "onGotoMysteryBoxen"
-                    ? onGotoMysteryBoxen
-                    : a.action === "onLogout"
-                    ? onLogout
-                    : undefined
-                }
+                onClick={handleAction(a.action)}
                 whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
                 animate={{
                   boxShadow: [
@@ -482,27 +502,7 @@ export default function HomeView({
             ) : (
               <button
                 key={a.id}
-                onClick={
-                  a.action === "onGotoMenu"
-                    ? onGotoMenu
-                    : a.action === "onGotoOrders"
-                    ? onGotoOrders
-                    : a.action === "onGotoAdmin"
-                    ? onGotoAdmin
-                    : a.action === "onGotoKurier"
-                    ? onGotoKurier
-                    : a.action === "onGotoPass"
-                    ? onGotoPass
-                    : a.action === "onBuyCryptoClick"
-                    ? onBuyCryptoClick
-                    : a.action === "onGotoLotto"
-                    ? onGotoLotto
-                    : a.action === "onGotoMysteryBoxen"
-                    ? onGotoMysteryBoxen
-                    : a.action === "onLogout"
-                    ? onLogout
-                    : undefined
-                }
+                onClick={handleAction(a.action)}
                 style={{
                   background: a.bg,
                   color: a.color,
