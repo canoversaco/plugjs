@@ -1,3 +1,5 @@
+// src/components/MysteryBoxUserView.js
+
 import React from "react";
 import { db } from "../firebase";
 import {
@@ -8,18 +10,18 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-// --- SOUNDS (mp3 im public/sounds/) ---
-const soundBoxOpen = "/sounds/box_open.mp3"; // Sound abspielen, wenn Box geöffnet wird
-const soundWin = "/sounds/win.mp3"; // Sound bei Gewinn
-const soundCoin = "/sounds/coin.mp3"; // Sound bei Umtausch
+// SOUNDS (liegen im public/sounds/)
+const soundBoxOpen = "/sounds/box_open.mp3";
+const soundWin = "/sounds/win.mp3";
+const soundCoin = "/sounds/coin.mp3";
 
-// --- Utility für Bilder ---
+// Utility für Produktbild
 const BILD_URL = (produkt) =>
   produkt?.bildName
     ? `/images/produkte/${produkt.bildName}.webp`
     : "/images/produkte/placeholder.webp";
 
-// --- Utility für Sound abspielen ---
+// Utility für Sound abspielen
 const playSound = (src, volume = 1) => {
   try {
     const audio = new window.Audio(src);
@@ -39,9 +41,9 @@ export default class MysteryBoxUserView extends React.Component {
     boxHistory: [],
     loading: true,
     showWinModal: false,
-    actionLoading: false,
     orderLoading: false,
     swapLoading: false,
+    inventarLoading: false,
   };
 
   async componentDidMount() {
@@ -64,6 +66,7 @@ export default class MysteryBoxUserView extends React.Component {
         ...docSnap.data(),
       }));
 
+      // Firestore User live holen
       const userDoc = await getDoc(doc(db, "users", this.props.user.id));
       const userData = userDoc.data();
       const boxHistory = userData?.boxHistory || [];
@@ -106,22 +109,39 @@ export default class MysteryBoxUserView extends React.Component {
     const { user } = this.props;
     if (!selectedBox || opening) return;
 
-    if (!selectedBox.items?.length) {
-      this.setState({ message: "❌ Diese Box hat keine Inhalte!" });
-      return;
-    }
-    if ((user.guthaben || 0) < selectedBox.preis) {
-      this.setState({ message: "❌ Nicht genug Guthaben!" });
-      return;
-    }
     this.setState({ opening: true, won: null, message: "" });
 
-    playSound(soundBoxOpen, 0.8);
-    await new Promise((res) => setTimeout(res, 1200 + Math.random() * 600));
-
-    let produktId;
     try {
-      produktId = this.draw(selectedBox);
+      // IMMER AKTUELLEN USER holen
+      const userDocRef = doc(db, "users", user.id);
+      const userSnap = await getDoc(userDocRef);
+      const userData = userSnap.data();
+      const userGuthaben = userData?.guthaben || 0;
+      const userInventory = Array.isArray(userData?.inventory)
+        ? userData.inventory
+        : [];
+      const userHistory = Array.isArray(userData?.boxHistory)
+        ? userData.boxHistory
+        : [];
+
+      // Validierungen
+      if (!selectedBox.items?.length) {
+        this.setState({
+          message: "❌ Diese Box hat keine Inhalte!",
+          opening: false,
+        });
+        return;
+      }
+      if (userGuthaben < selectedBox.preis) {
+        this.setState({ message: "❌ Nicht genug Guthaben!", opening: false });
+        return;
+      }
+
+      playSound(soundBoxOpen, 0.8);
+      await new Promise((res) => setTimeout(res, 1200 + Math.random() * 600));
+
+      // Ziehung
+      const produktId = this.draw(selectedBox);
       const produkt = this.getProdukt(produktId);
       if (!produktId) throw new Error("Keine produktId erhalten");
       if (!produkt)
@@ -129,8 +149,20 @@ export default class MysteryBoxUserView extends React.Component {
 
       playSound(soundWin, 1);
 
-      this.setState({ won: produktId, showWinModal: true });
+      // Gewinnobjekt
+      const newGewinn = {
+        produktId,
+        name: produkt.name || "",
+        bildName: produkt.bildName || "",
+        preis: typeof produkt.preis === "number" ? produkt.preis : 0,
+        kategorie: produkt.kategorie || "",
+        gewonnenAm: Date.now(),
+        boxName: selectedBox.name || "",
+        status: "verfügbar",
+        bestellDatum: null,
+      };
 
+      // History-Eintrag
       const newEntry = {
         boxId: selectedBox.id,
         boxName: selectedBox.name,
@@ -139,33 +171,29 @@ export default class MysteryBoxUserView extends React.Component {
         produktBild: produkt.bildName || "",
         timestamp: Date.now(),
       };
-      const newHistory = [newEntry, ...this.state.boxHistory].slice(0, 10);
 
-      // INVENTAR-UPDATE
-      const userDocRef = doc(db, "users", user.id);
-      const userSnap = await getDoc(userDocRef);
-      const currentInventory = userSnap.data()?.inventory || [];
-      const newGewinn = {
-        produktId,
-        name: produkt.name,
-        bildName: produkt.bildName,
-        preis: produkt.preis,
-        kategorie: produkt.kategorie,
-        gewonnenAm: Date.now(),
-        boxName: selectedBox.name,
-        status: "verfügbar",
-        bestellDatum: null,
-      };
+      // Update Firestore
+      const newGuthaben = +(userGuthaben - selectedBox.preis).toFixed(2);
+      const newHistory = [newEntry, ...userHistory].slice(0, 10);
+      const newInventory = [newGewinn, ...userInventory].slice(0, 50);
+
       await updateDoc(userDocRef, {
-        guthaben: (user.guthaben || 0) - selectedBox.preis,
+        guthaben: newGuthaben,
         boxHistory: newHistory,
-        inventory: [newGewinn, ...currentInventory].slice(0, 50),
+        inventory: newInventory,
       });
 
+      // Lokalen State aktualisieren
       this.setState({
         boxHistory: newHistory,
+        won: produktId,
+        showWinModal: true,
         message: "",
       });
+
+      // Optionale Rückmeldung nach außen
+      if (typeof this.props.onUserUpdated === "function")
+        this.props.onUserUpdated();
     } catch (error) {
       this.setState({
         message: "❌ Technischer Fehler beim Öffnen: " + error.message,
@@ -175,13 +203,10 @@ export default class MysteryBoxUserView extends React.Component {
     }
   };
 
-  // --- DIREKT BESTELLEN aus Gewinn ---
   handleOrderWin = async () => {
     const produkt = this.getProdukt(this.state.won);
     if (!produkt) return;
-
     this.setState({ orderLoading: true });
-    // Selber Ablauf wie aus UserInventory.js:
     try {
       if (this.props.onOrderFromInventory) {
         await this.props.onOrderFromInventory(produkt);
@@ -195,26 +220,27 @@ export default class MysteryBoxUserView extends React.Component {
     }
   };
 
-  // --- DIREKT UMTauschen in Guthaben ---
   handleSwapWin = async () => {
     const produkt = this.getProdukt(this.state.won);
     if (!produkt) return;
-
     this.setState({ swapLoading: true });
     playSound(soundCoin, 0.9);
 
-    // Die Funktion ist exakt wie im UserInventory.js
     if (this.props.onSwapFromInventory) {
       await this.props.onSwapFromInventory(produkt);
       this.setState({ showWinModal: false, swapLoading: false });
     }
   };
 
-  // --- ZUM INVENTAR springen ---
-  handleGotoInventar = () => {
-    if (this.props.onGoInventar) {
-      this.setState({ showWinModal: false });
-      this.props.onGoInventar();
+  handleAddToInventory = async () => {
+    this.setState({ inventarLoading: true });
+    try {
+      if (this.props.onGoInventar) {
+        this.setState({ showWinModal: false, inventarLoading: false });
+        this.props.onGoInventar();
+      }
+    } catch {
+      this.setState({ inventarLoading: false });
     }
   };
 
@@ -225,93 +251,82 @@ export default class MysteryBoxUserView extends React.Component {
         style={{
           background:
             selected?.id === box.id
-              ? "linear-gradient(95deg, #242d36 73%, #38bdf822 100%)"
+              ? "linear-gradient(96deg, #222c37 72%, #38bdf822 100%)"
               : "#191e26",
           border:
             selected?.id === box.id
-              ? "2.7px solid #e3ff64"
-              : "1.5px solid #22242d",
-          borderRadius: 26,
-          padding: "36px 18px 28px 18px",
-          minHeight: 235,
+              ? "2.4px solid #e3ff64"
+              : "1.1px solid #23262e",
+          borderRadius: 22,
+          padding: "32px 13px 21px 13px",
+          minHeight: 210,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          position: "relative",
           cursor: "pointer",
           boxShadow:
             selected?.id === box.id
-              ? "0 2px 28px #38bdf822, 0 1px 6px #e3ff6412"
-              : "0 3px 17px #22242b18",
-          transform: selected?.id === box.id ? "scale(1.07)" : "scale(1)",
-          transition: "all 0.23s cubic-bezier(.5,1.5,.25,1)",
-          animation:
-            selected?.id === box.id
-              ? "bounceUp 0.58s cubic-bezier(.6,1.7,.5,1.01)"
-              : "",
+              ? "0 2px 20px #38bdf822, 0 1px 6px #e3ff6412"
+              : "0 3px 13px #22242b14",
+          transform: selected?.id === box.id ? "scale(1.045)" : "scale(1)",
+          transition: "all 0.22s cubic-bezier(.5,1.5,.25,1)",
         }}
       >
         <div
           style={{
             fontWeight: 900,
-            fontSize: 23,
+            fontSize: 20,
             color: "#e3ff64",
-            marginBottom: 6,
-            letterSpacing: 0.19,
-            textShadow: "0 1px 12px #e3ff6422",
+            marginBottom: 4,
             display: "flex",
             alignItems: "center",
-            gap: 7,
+            gap: 6,
+            letterSpacing: 0.18,
           }}
         >
-          <span
-            style={{
-              filter: "drop-shadow(0 2px 7px #38bdf855)",
-              fontSize: 27,
-            }}
-          >
-            🎁
-          </span>
-          {box.name}
+          <span style={{ fontSize: 24 }}>🎁</span> {box.name}
         </div>
         <div
           style={{
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: 700,
             color: "#38bdf8",
-            marginBottom: 13,
-            letterSpacing: 0.11,
+            marginBottom: 9,
+            letterSpacing: 0.07,
             display: "flex",
             alignItems: "center",
-            gap: 5,
+            gap: 4,
           }}
         >
-          <span role="img" aria-label="euro">
-            💶
-          </span>{" "}
-          {box.preis} €
+          💶 {box.preis} €
         </div>
-        <div style={{ width: "100%", minHeight: 36, marginBottom: 11 }}>
+        <div style={{ width: "100%", minHeight: 36, marginBottom: 10 }}>
           {this.renderBoxProducts(box)}
         </div>
         <button
           style={{
-            marginTop: 15,
-            background: "linear-gradient(90deg,#38bdf8,#e3ff64 100%)",
-            color: "#10121a",
+            marginTop: 9,
+            background:
+              opening || (this.props.user.guthaben || 0) < box.preis
+                ? "#23262e"
+                : "linear-gradient(90deg,#38bdf8,#e3ff64 100%)",
+            color:
+              opening || (this.props.user.guthaben || 0) < box.preis
+                ? "#a1a1aa"
+                : "#191d23",
             border: 0,
-            borderRadius: 13,
+            borderRadius: 9,
             fontWeight: 900,
-            fontSize: 17,
-            padding: "10px 37px",
+            fontSize: 15,
+            padding: "8px 24px",
             cursor:
               opening || (this.props.user.guthaben || 0) < box.preis
                 ? "not-allowed"
                 : "pointer",
-            boxShadow: "0 2px 12px #38bdf822",
-            letterSpacing: 0.13,
-            opacity: opening && selected?.id === box.id ? 0.65 : 1,
-            filter: opening ? "blur(0.7px)" : "none",
+            boxShadow: "0 1.5px 9px #38bdf822",
+            letterSpacing: 0.11,
+            opacity: opening && selected?.id === box.id ? 0.67 : 1,
+            filter: opening ? "blur(0.6px)" : "none",
             transition: "all .13s",
             display: "flex",
             alignItems: "center",
@@ -334,35 +349,6 @@ export default class MysteryBoxUserView extends React.Component {
             ? "Nicht genug €"
             : "Öffnen"}
         </button>
-        {selected?.id === box.id && (
-          <div
-            style={{
-              pointerEvents: "none",
-              position: "absolute",
-              inset: 0,
-              borderRadius: 28,
-              background:
-                "repeating-linear-gradient(120deg,#e3ff6420 0 3px,#23262e00 3px 15px)",
-              opacity: 0.15,
-              animation: "mysteryGlow 2.6s linear infinite alternate",
-            }}
-          />
-        )}
-        <style>
-          {`
-          @keyframes mysteryGlow {
-            0% { opacity: 0.11 }
-            100% { opacity: 0.29 }
-          }
-          @keyframes bounceUp {
-            0% { transform: scale(1);}
-            32% { transform: scale(1.13);}
-            48% { transform: scale(0.94);}
-            68% { transform: scale(1.08);}
-            100% { transform: scale(1.07);}
-          }
-        `}
-        </style>
       </div>
     );
   }
@@ -370,7 +356,7 @@ export default class MysteryBoxUserView extends React.Component {
   renderBoxProducts(box) {
     if (!box.items?.length)
       return (
-        <div style={{ color: "#a1a1aa", textAlign: "center" }}>
+        <div style={{ color: "#a1a1aa", textAlign: "center", fontSize: 13 }}>
           Keine Produkte
         </div>
       );
@@ -390,32 +376,28 @@ export default class MysteryBoxUserView extends React.Component {
               key={idx}
               style={{
                 background: "#232940",
-                borderRadius: 9,
-                padding: "5px 10px",
+                borderRadius: 7,
+                padding: "5px 9px",
                 display: "flex",
                 alignItems: "center",
-                minWidth: 112,
-                maxWidth: 150,
+                minWidth: 98,
+                maxWidth: 140,
                 margin: "0 1px 5px 1px",
-                boxShadow: "0 1px 5px #0e111422",
-                border: "1.1px solid #2e3240",
-                fontSize: 13,
+                fontSize: 12.3,
                 fontWeight: 700,
               }}
             >
-              <span style={{ fontSize: 17, marginRight: 6 }}>🎲</span>
               <img
                 src={BILD_URL(produkt)}
                 alt={produkt?.name || "?"}
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 26,
+                  height: 26,
                   objectFit: "cover",
-                  borderRadius: 7,
-                  marginRight: 8,
+                  borderRadius: 6,
+                  marginRight: 6,
                   background: "#18191c",
-                  border: "1.5px solid #252529",
-                  boxShadow: "0 1px 6px #25252918",
+                  border: "1px solid #252529",
                 }}
                 onError={(e) => {
                   e.target.src = "/images/produkte/placeholder.webp";
@@ -423,12 +405,16 @@ export default class MysteryBoxUserView extends React.Component {
               />
               <div>
                 <div
-                  style={{ fontWeight: 900, color: "#e3ff64", fontSize: 13.1 }}
+                  style={{ fontWeight: 900, color: "#e3ff64", fontSize: 12 }}
                 >
                   {produkt?.name ?? "?"}
                 </div>
                 <div
-                  style={{ fontSize: 11.3, color: "#38bdf8", fontWeight: 700 }}
+                  style={{
+                    fontSize: 10.2,
+                    color: "#38bdf8",
+                    fontWeight: 700,
+                  }}
                 >
                   {item.wahrscheinlichkeit}% Chance
                 </div>
@@ -453,9 +439,9 @@ export default class MysteryBoxUserView extends React.Component {
       loading,
       orderLoading,
       swapLoading,
+      inventarLoading,
     } = this.state;
 
-    // Gewinn-Produkt holen
     const winProdukt = won ? this.getProdukt(won) : null;
 
     return (
@@ -472,9 +458,9 @@ export default class MysteryBoxUserView extends React.Component {
           style={{
             display: "flex",
             alignItems: "center",
-            padding: "29px 0 14px 0",
+            padding: "24px 0 11px 0",
             background: "linear-gradient(92deg,#181b24 88%,#23262e 100%)",
-            boxShadow: "0 8px 24px #0007",
+            boxShadow: "0 8px 22px #0005",
             position: "sticky",
             top: 0,
             zIndex: 2,
@@ -483,19 +469,17 @@ export default class MysteryBoxUserView extends React.Component {
           <button
             onClick={onGoBack}
             style={{
-              marginLeft: 17,
+              marginLeft: 13,
               background: "none",
               border: 0,
               color: "#e3ff64",
               fontWeight: 900,
-              fontSize: 28,
+              fontSize: 24,
               cursor: "pointer",
             }}
             title="Zurück"
           >
-            <span role="img" aria-label="zurück">
-              🔙
-            </span>
+            🔙
           </button>
           <h2
             style={{
@@ -503,41 +487,35 @@ export default class MysteryBoxUserView extends React.Component {
               color: "#e3ff64",
               textAlign: "center",
               fontWeight: 900,
-              fontSize: 29,
-              letterSpacing: 1.7,
+              fontSize: 23,
+              letterSpacing: 1.3,
               margin: 0,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: 7,
             }}
           >
-            <span role="img" aria-label="gift">
-              🎁
-            </span>{" "}
-            Mystery Boxen
+            🎁 Mystery Boxen
           </h2>
-          <span style={{ width: 38 }} />
+          <span style={{ width: 28 }} />
         </div>
 
         {/* Guthaben */}
-        <div style={{ textAlign: "center", margin: "24px 0 0 0" }}>
-          <div style={{ fontWeight: 700, color: "#a1a1aa", fontSize: 16 }}>
+        <div style={{ textAlign: "center", margin: "21px 0 0 0" }}>
+          <div style={{ fontWeight: 700, color: "#a1a1aa", fontSize: 14 }}>
             Guthaben
           </div>
           <div
             style={{
-              fontSize: 37,
+              fontSize: 29,
               fontWeight: 900,
               color: "#e3ff64",
-              letterSpacing: 1.7,
+              letterSpacing: 1.2,
               marginTop: 2,
             }}
           >
-            <span role="img" aria-label="money">
-              💸
-            </span>{" "}
-            {user?.guthaben?.toFixed(2) ?? "0.00"} €
+            💸 {user?.guthaben?.toFixed(2) ?? "0.00"} €
           </div>
         </div>
 
@@ -546,26 +524,23 @@ export default class MysteryBoxUserView extends React.Component {
           <div
             style={{
               textAlign: "center",
-              margin: "62px auto",
+              margin: "52px auto",
               color: "#38bdf8",
-              fontSize: 23,
+              fontSize: 18,
               letterSpacing: 1.1,
             }}
           >
-            <span role="img" aria-label="load">
-              ⏳
-            </span>{" "}
-            Lade Boxen...
+            ⏳ Lade Boxen...
           </div>
         ) : (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: 38,
-              maxWidth: 1100,
-              margin: "44px auto 24px auto",
-              padding: "0 18px",
+              gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))",
+              gap: 28,
+              maxWidth: 980,
+              margin: "32px auto 20px auto",
+              padding: "0 12px",
               alignItems: "start",
             }}
           >
@@ -579,13 +554,10 @@ export default class MysteryBoxUserView extends React.Component {
                   gridColumn: "1 / -1",
                   textAlign: "center",
                   color: "#a1a1aa",
-                  marginTop: 30,
+                  marginTop: 20,
                 }}
               >
-                <span role="img" aria-label="nix">
-                  😶‍🌫️
-                </span>{" "}
-                Keine Boxen verfügbar
+                😶‍🌫️ Keine Boxen verfügbar
               </div>
             )}
           </div>
@@ -595,36 +567,36 @@ export default class MysteryBoxUserView extends React.Component {
         {opening && (
           <div
             style={{
-              margin: "70px auto 15px auto",
-              maxWidth: 330,
+              margin: "53px auto 10px auto",
+              maxWidth: 250,
               textAlign: "center",
-              fontSize: 31,
+              fontSize: 25,
               fontWeight: 900,
               color: "#38bdf8",
               textShadow: "0 1px 8px #38bdf822",
             }}
           >
-            <div>🎁 Die Box dreht...</div>
+            🎁 Die Box dreht...
             <div className="pop-anim-wrap">
               <div className="pop-anim"></div>
             </div>
             <style>{`
               .pop-anim-wrap {
-                margin: 23px auto 7px auto;
-                width: 82px;
-                height: 82px;
+                margin: 17px auto 6px auto;
+                width: 54px;
+                height: 54px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
               }
               .pop-anim {
-                width: 66px;
-                height: 66px;
-                border-radius: 19px 13px 15px 17px;
+                width: 39px;
+                height: 39px;
+                border-radius: 9px 10px 10px 9px;
                 background: linear-gradient(112deg, #191d23 80%, #38bdf8 120%);
-                border: 5px solid #38bdf8;
-                border-top: 5px solid #e3ff64;
-                box-shadow: 0 2px 28px #38bdf877, 0 2px 8px #10121a44;
+                border: 3px solid #38bdf8;
+                border-top: 3px solid #e3ff64;
+                box-shadow: 0 2px 18px #38bdf877, 0 2px 8px #10121a44;
                 animation: boxSpin 1.2s cubic-bezier(.4,.7,.4,1) infinite;
                 position: relative;
               }
@@ -632,10 +604,10 @@ export default class MysteryBoxUserView extends React.Component {
                 content: "";
                 display: block;
                 position: absolute;
-                left: 50%; top: -11px;
+                left: 50%; top: -6px;
                 transform: translateX(-50%);
-                width: 39px; height: 14px;
-                border-radius: 8px 8px 7px 7px/7px 7px 7px 7px;
+                width: 22px; height: 9px;
+                border-radius: 5px 5px 5px 5px/5px 5px 5px 5px;
                 background: linear-gradient(92deg, #e3ff64 60%, #38bdf8 120%);
                 box-shadow: 0 2px 10px #e3ff6455;
               }
@@ -653,39 +625,39 @@ export default class MysteryBoxUserView extends React.Component {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(18,22,30,0.94)",
+              background: "rgba(18,22,30,0.95)",
               zIndex: 99,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              animation: "modalfade .28s cubic-bezier(.1,.75,.3,1)",
+              animation: "modalfade .21s cubic-bezier(.1,.75,.3,1)",
             }}
           >
             <div
               style={{
                 background: "linear-gradient(108deg,#161d23 85%,#23262e 100%)",
                 border: "2.4px solid #e3ff64",
-                borderRadius: 23,
-                minWidth: 320,
-                maxWidth: 390,
+                borderRadius: 19,
+                minWidth: 300,
+                maxWidth: 340,
                 boxShadow: "0 8px 44px #38bdf877",
-                padding: "36px 29px 28px 29px",
+                padding: "29px 21px 18px 21px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                animation: "popfade .8s cubic-bezier(.15,1.9,.5,.87)",
+                animation: "popfade .56s cubic-bezier(.15,1.9,.5,.87)",
                 position: "relative",
               }}
             >
               <div
                 style={{
                   position: "absolute",
-                  top: 18,
-                  right: 19,
+                  top: 15,
+                  right: 14,
                   cursor: "pointer",
                   fontWeight: 900,
                   color: "#a1a1aa",
-                  fontSize: 23,
+                  fontSize: 21,
                 }}
                 title="Schließen"
                 onClick={() => this.setState({ showWinModal: false })}
@@ -694,12 +666,12 @@ export default class MysteryBoxUserView extends React.Component {
               </div>
               <div
                 style={{
-                  fontSize: 28,
+                  fontSize: 21,
                   fontWeight: 900,
                   color: "#e3ff64",
-                  marginBottom: 13,
-                  letterSpacing: 0.21,
-                  textShadow: "0 1px 14px #e3ff6455",
+                  marginBottom: 11,
+                  letterSpacing: 0.16,
+                  textShadow: "0 1px 10px #e3ff6455",
                 }}
               >
                 🎉 Glückwunsch!
@@ -708,15 +680,15 @@ export default class MysteryBoxUserView extends React.Component {
                 src={BILD_URL(winProdukt)}
                 alt="Produkt"
                 style={{
-                  width: 85,
-                  height: 85,
-                  borderRadius: 15,
+                  width: 68,
+                  height: 68,
+                  borderRadius: 12,
                   boxShadow: "0 3px 24px #10121a66",
-                  border: "2.7px solid #38bdf8",
+                  border: "2px solid #38bdf8",
                   background: "#191d23",
                   objectFit: "cover",
-                  marginBottom: 13,
-                  animation: "popfade .86s cubic-bezier(.2,2.1,.6,.95)",
+                  marginBottom: 8,
+                  animation: "popfade .53s cubic-bezier(.2,2.1,.6,.95)",
                 }}
                 onError={(e) => {
                   e.target.src = "/images/produkte/placeholder.webp";
@@ -726,23 +698,31 @@ export default class MysteryBoxUserView extends React.Component {
                 style={{
                   color: "#38bdf8",
                   fontWeight: 800,
-                  fontSize: 20,
-                  marginBottom: 4,
+                  fontSize: 17,
+                  marginBottom: 2,
+                  textAlign: "center",
                 }}
               >
                 {winProdukt?.name ?? "Geheimnisvolles Item"}
               </div>
-              <div style={{ color: "#e3ff64", fontWeight: 500, fontSize: 14 }}>
+              <div style={{ color: "#e3ff64", fontWeight: 500, fontSize: 12 }}>
                 Kategorie: {winProdukt?.kategorie ?? "-"}
               </div>
-              <div style={{ color: "#a1a1aa", fontSize: 13, marginBottom: 15 }}>
+              <div
+                style={{
+                  color: "#a1a1aa",
+                  fontSize: 11,
+                  marginBottom: 11,
+                  marginTop: 3,
+                }}
+              >
                 Wert: {winProdukt?.preis ? winProdukt.preis + " €" : "-"}
               </div>
               <div
                 style={{
                   display: "flex",
-                  gap: 11,
-                  marginTop: 12,
+                  gap: 7,
+                  marginTop: 5,
                   flexWrap: "wrap",
                   justifyContent: "center",
                 }}
@@ -752,68 +732,60 @@ export default class MysteryBoxUserView extends React.Component {
                     background: "#38bdf8",
                     color: "#191d23",
                     border: "0",
-                    borderRadius: 11,
+                    borderRadius: 8,
                     fontWeight: 900,
-                    fontSize: 16,
-                    padding: "11px 24px",
+                    fontSize: 14.5,
+                    padding: "8px 18px",
                     cursor: orderLoading ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 7,
+                    gap: 6,
                   }}
                   onClick={this.handleOrderWin}
                   disabled={orderLoading}
                   title="Jetzt direkt bestellen!"
                 >
-                  <span role="img" aria-label="order">
-                    🛒
-                  </span>{" "}
-                  Bestellen
+                  🛒 Bestellen
                 </button>
                 <button
                   style={{
                     background: "#191d23",
                     color: "#38bdf8",
-                    border: "1.7px solid #38bdf888",
-                    borderRadius: 11,
+                    border: "1.4px solid #38bdf888",
+                    borderRadius: 8,
                     fontWeight: 900,
-                    fontSize: 16,
-                    padding: "11px 19px",
+                    fontSize: 14.5,
+                    padding: "8px 12px",
                     cursor: swapLoading ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 5,
                   }}
                   onClick={this.handleSwapWin}
                   disabled={swapLoading}
                   title="In Guthaben tauschen"
                 >
-                  <span role="img" aria-label="swap">
-                    💱
-                  </span>{" "}
-                  Umtauschen
+                  💱 Umtauschen
                 </button>
                 <button
                   style={{
                     background: "#e3ff64",
                     color: "#181b1e",
                     border: 0,
-                    borderRadius: 11,
+                    borderRadius: 8,
                     fontWeight: 900,
-                    fontSize: 16,
-                    padding: "11px 18px",
-                    cursor: "pointer",
+                    fontSize: 14.5,
+                    padding: "8px 13px",
+                    cursor: inventarLoading ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
                   }}
-                  onClick={this.handleGotoInventar}
+                  onClick={this.handleAddToInventory}
+                  disabled={inventarLoading}
                   title="Zum Inventar"
                 >
-                  <span role="img" aria-label="inventar">
-                    🎒
-                  </span>{" "}
-                  Inventar
+                  🎒 Inventar
                 </button>
               </div>
             </div>
@@ -821,7 +793,7 @@ export default class MysteryBoxUserView extends React.Component {
               @keyframes modalfade { 0% { opacity: 0; } 100% { opacity: 1; } }
               @keyframes popfade {
                 0% { opacity: 0; transform: scale(.8);}
-                70% { opacity: 1; transform: scale(1.1);}
+                70% { opacity: 1; transform: scale(1.08);}
                 100% { opacity: 1; transform: scale(1);}
               }
             `}</style>
@@ -832,16 +804,16 @@ export default class MysteryBoxUserView extends React.Component {
         {message && (
           <div
             style={{
-              margin: "12px auto",
-              maxWidth: 390,
+              margin: "8px auto",
+              maxWidth: 370,
               background: "#181a1e",
               color: "#e3ff64",
               fontWeight: 700,
-              borderRadius: 9,
+              borderRadius: 7,
               textAlign: "center",
-              padding: "10px 0",
-              fontSize: 15,
-              boxShadow: "0 1px 10px #e3ff6444",
+              padding: "7px 0",
+              fontSize: 13.5,
+              boxShadow: "0 1px 9px #e3ff6433",
             }}
           >
             {message}
@@ -851,33 +823,30 @@ export default class MysteryBoxUserView extends React.Component {
         {/* History */}
         <div
           style={{
-            margin: "43px auto 32px auto",
-            maxWidth: 500,
+            margin: "30px auto 20px auto",
+            maxWidth: 440,
             background: "#181a1e",
-            borderRadius: 21,
-            padding: "19px 28px 17px 28px",
+            borderRadius: 17,
+            padding: "14px 18px 13px 18px",
             color: "#fff",
-            boxShadow: "0 1px 12px #23262e22",
+            boxShadow: "0 1px 9px #23262e18",
           }}
         >
           <div
             style={{
               fontWeight: 800,
               color: "#38bdf8",
-              fontSize: 17,
-              marginBottom: 8,
+              fontSize: 14.8,
+              marginBottom: 7,
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 7,
             }}
           >
-            <span role="img" aria-label="clock">
-              🕑
-            </span>{" "}
-            Deine letzten Box-Öffnungen
+            🕑 Deine letzten Box-Öffnungen
           </div>
           {boxHistory.length === 0 ? (
-            <div style={{ color: "#a1a1aa", fontSize: 14 }}>
+            <div style={{ color: "#a1a1aa", fontSize: 13 }}>
               Noch keine Öffnungen.
             </div>
           ) : (
@@ -888,7 +857,7 @@ export default class MysteryBoxUserView extends React.Component {
                 padding: 0,
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
+                gap: 8,
               }}
             >
               {boxHistory.slice(0, 7).map((h, i) => {
@@ -899,24 +868,24 @@ export default class MysteryBoxUserView extends React.Component {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 12,
+                      gap: 9,
                       background: "#23262e",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      fontSize: 14.8,
+                      borderRadius: 7,
+                      padding: "7px 8px",
+                      fontSize: 12.5,
                       animation:
-                        "fadeIn .54s cubic-bezier(.21,1.1,.6,.99) both",
-                      animationDelay: `${i * 0.09}s`,
+                        "fadeIn .35s cubic-bezier(.21,1.1,.6,.99) both",
+                      animationDelay: `${i * 0.07}s`,
                     }}
                   >
                     <img
                       src={BILD_URL(produkt)}
                       alt={produkt?.name || "?"}
                       style={{
-                        width: 33,
-                        height: 33,
-                        borderRadius: 6,
-                        marginRight: 7,
+                        width: 26,
+                        height: 26,
+                        borderRadius: 5,
+                        marginRight: 5,
                         background: "#191d23",
                         border: "1px solid #333",
                         objectFit: "cover",
@@ -929,7 +898,7 @@ export default class MysteryBoxUserView extends React.Component {
                       style={{
                         fontWeight: 900,
                         color: "#e3ff64",
-                        minWidth: 80,
+                        minWidth: 55,
                       }}
                     >
                       {h.boxName}
@@ -938,8 +907,8 @@ export default class MysteryBoxUserView extends React.Component {
                       style={{
                         color: "#38bdf8",
                         fontWeight: 700,
-                        marginLeft: 4,
-                        minWidth: 90,
+                        marginLeft: 2,
+                        minWidth: 70,
                       }}
                     >
                       {produkt?.name ?? "?"}
@@ -948,7 +917,7 @@ export default class MysteryBoxUserView extends React.Component {
                       style={{
                         color: "#a1a1aa",
                         marginLeft: "auto",
-                        fontSize: 13,
+                        fontSize: 11,
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -968,7 +937,7 @@ export default class MysteryBoxUserView extends React.Component {
           )}
           <style>{`
             @keyframes fadeIn {
-              0% { opacity: 0; transform: translateY(30px);}
+              0% { opacity: 0; transform: translateY(18px);}
               100% { opacity: 1; transform: translateY(0);}
             }
           `}</style>
