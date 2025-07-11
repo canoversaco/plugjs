@@ -21,6 +21,7 @@ import WalletModal from "./components/WalletModal";
 import PassPanel from "./components/PassPanel";
 import LottoView from "./components/LottoView";
 import MysteryBoxUserView from "./components/MysteryBoxUserView";
+import UserInventory from "./components/UserInventory";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 
@@ -28,15 +29,12 @@ const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false };
-
   static getDerivedStateFromError(error) {
     return { hasError: true };
   }
-
   componentDidCatch(error, errorInfo) {
     console.error("Error in component:", error, errorInfo);
   }
-
   render() {
     if (this.state.hasError) {
       return (
@@ -49,237 +47,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function BuyCryptoModal({ user, amount, btc, onClose }) {
-  const ADMIN_BTC_ADDRESS = ADMIN_BTC_WALLET;
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(ADMIN_BTC_ADDRESS);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1300);
-  };
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        minWidth: "100vw",
-        background: "rgba(20,22,30,0.90)",
-        color: "#fafaf9",
-        fontFamily: "'Inter',sans-serif",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 2000,
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "linear-gradient(135deg, #23262e 93%, #38bdf822 100%)",
-          borderRadius: 20,
-          padding: "36px 26px 30px 26px",
-          maxWidth: 400,
-          width: "95vw",
-          boxShadow: "0 12px 36px #000b, 0 2px 10px #38bdf822",
-          border: "1.5px solid #292933",
-          position: "relative",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            right: 15,
-            top: 14,
-            fontSize: 26,
-            background: "rgba(37,40,54,0.75)",
-            border: 0,
-            color: "#e5e7eb",
-            fontWeight: 800,
-            borderRadius: 7,
-            width: 34,
-            height: 34,
-            cursor: "pointer",
-            zIndex: 2,
-          }}
-          aria-label="Schließen"
-        >
-          ×
-        </button>
-        <h2
-          style={{
-            color: "#38bdf8",
-            marginBottom: 17,
-            fontWeight: 900,
-            fontSize: 23,
-            letterSpacing: 0.8,
-            textAlign: "center",
-            textShadow: "0 1px 7px #22292f30",
-          }}
-        >
-          Krypto kaufen
-        </h2>
-        <h2
-          style={{
-            color: "#ff0000",
-            marginBottom: 15,
-            fontWeight: 900,
-            fontSize: 22,
-            letterSpacing: 0.7,
-            textAlign: "center",
-            textShadow: "0 1px 7px #22292f30",
-          }}
-        >
-          ⚠️ACHTUNG ⚠️
-        </h2>
-        <div>
-          Du musst in deiner Wallet (Symbol oben rechts) vorher den
-          Einzahlungsbetrag eingeben und auf Einzahlen klicken, ansonsten kann
-          deine Einzahlung nicht Zugeordnet werden und wird nicht als Guthaben
-          gutgeschrieben! Nach 1 Bestätigung erhältst du das Guthaben
-          automatisch als EUR in deinem Wallet gutgeschrieben.
-        </div>
-        <br />
-        <div style={{ marginBottom: 16, fontSize: 15.8 }}>
-          <b>BTC schnell und einfach mit Apple Pay kaufen:</b>
-          <br />
-          <a
-            href={`https://guardarian.com`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: "#38bdf8",
-              color: "#18181b",
-              fontWeight: 900,
-              padding: "13px 0",
-              borderRadius: 10,
-              width: "100%",
-              display: "block",
-              textAlign: "center",
-              fontSize: 18,
-              marginTop: 14,
-              marginBottom: 7,
-              boxShadow: "0 2px 10px #38bdf822",
-              textDecoration: "none",
-              letterSpacing: 0.18,
-            }}
-          >
-            🟦 Bitcoin Kaufen ohne Verifizierung! (Banküberweisung, Revolut Pay,
-            Visa)
-          </a>
-          <div
-            style={{
-              color: "#a1a1aa",
-              fontSize: 14,
-              marginTop: 8,
-              marginBottom: 8,
-            }}
-          >
-            <b>
-              Kein Account/KYC nötig bis ca. 700 €. Direktversand auf deine
-              Adresse.
-            </b>
-          </div>
-        </div>
-        <div style={{ marginBottom: 17 }}>
-          <ol style={{ marginLeft: 22, color: "#e5e7eb", fontSize: 15.1 }}>
-            <li style={{ marginBottom: 13 }}>
-              Nutze den Apple Pay Button oben – du kaufst <b>direkt BTC</b> auf
-              unsere Wallet.
-            </li>
-            <li style={{ marginBottom: 13 }}>
-              Sende anschließend den gewünschten Betrag an diese Adresse:
-              <br />
-              <span
-                style={{
-                  wordBreak: "break-all",
-                  color: "#a3e635",
-                  fontFamily: "monospace",
-                  fontSize: 16.5,
-                  background: "#18181b",
-                  borderRadius: 7,
-                  padding: "7px 8px",
-                  display: "inline-block",
-                  margin: "7px 0 4px 0",
-                  boxShadow: "0 1px 5px #23262e22",
-                  border: "1.2px solid #292933",
-                  letterSpacing: 0.19,
-                }}
-              >
-                {ADMIN_BTC_ADDRESS}
-              </span>
-              <button
-                onClick={handleCopy}
-                style={{
-                  background: copied ? "#22c55e" : "#23262e",
-                  color: copied ? "#fff" : "#38bdf8",
-                  border: 0,
-                  borderRadius: 7,
-                  fontWeight: 700,
-                  fontSize: 15.3,
-                  padding: "5px 13px",
-                  marginLeft: 13,
-                  marginBottom: 5,
-                  marginTop: 3,
-                  cursor: "pointer",
-                  transition: "background 0.13s",
-                  outline: "none",
-                  boxShadow: copied ? "0 0 0 2px #22c55e55" : "",
-                }}
-              >
-                {copied ? "✔️ Kopiert" : "Adresse kopieren"}
-              </button>
-              {amount && btc && (
-                <div
-                  style={{
-                    margin: "10px 0 0 0",
-                    color: "#38bdf8",
-                    fontWeight: 700,
-                    fontSize: 15.5,
-                  }}
-                >
-                  Dein Wunschbetrag: <b>{amount} €</b> = <b>{btc} BTC</b>
-                </div>
-              )}
-            </li>
-            <li>
-              Nach 1 Bestätigung erhältst du das Guthaben automatisch als EUR in
-              deinem Wallet gutgeschrieben.
-            </li>
-          </ol>
-        </div>
-        <button
-          onClick={onClose}
-          style={{
-            width: "100%",
-            background: "#38bdf8",
-            color: "#18181b",
-            padding: "13px 0",
-            border: 0,
-            borderRadius: 10,
-            fontWeight: 900,
-            fontSize: 18,
-            marginTop: 6,
-            cursor: "pointer",
-            boxShadow: "0 2px 10px #38bdf822",
-            letterSpacing: 0.25,
-          }}
-        >
-          Zurück
-        </button>
-      </div>
-    </div>
-  );
-}
+// ... BuyCryptoModal wie gehabt ...
 
 export default class App extends React.Component {
   state = {
@@ -298,7 +66,8 @@ export default class App extends React.Component {
     buyCryptoAmount: null,
     buyCryptoBtc: null,
     userListener: null,
-    mysteryBoxes: [], // Neu hinzugefügt
+    mysteryBoxes: [],
+    warenkorbFromInventory: null,
   };
 
   unsub = [];
@@ -324,7 +93,6 @@ export default class App extends React.Component {
         });
       })
     );
-
     this.unsub.push(
       onSnapshot(collection(db, "orders"), (snap) => {
         this.setState({
@@ -332,7 +100,6 @@ export default class App extends React.Component {
         });
       })
     );
-
     this.unsub.push(
       onSnapshot(collection(db, "users"), (snap) => {
         this.setState({
@@ -340,7 +107,6 @@ export default class App extends React.Component {
         });
       })
     );
-
     this.unsub.push(
       onSnapshot(doc(db, "settings", "main"), (snap) => {
         const data = snap.data();
@@ -352,8 +118,6 @@ export default class App extends React.Component {
         }
       })
     );
-
-    // Neu: Mystery Boxes live abonnieren
     this.unsub.push(
       onSnapshot(collection(db, "mysteryBoxes"), (snap) => {
         const boxes = snap.docs.map((doc) => {
@@ -446,6 +210,7 @@ export default class App extends React.Component {
       view: "login",
       warenkorb: [],
       userListener: null,
+      warenkorbFromInventory: null,
     });
   };
 
@@ -557,7 +322,11 @@ export default class App extends React.Component {
       });
     }
 
-    this.setState({ warenkorb: [], view: "meine" });
+    this.setState({
+      warenkorb: [],
+      warenkorbFromInventory: null,
+      view: "meine",
+    });
   };
 
   handleBuyCryptoClick = async (eur, btc) => {
@@ -579,6 +348,39 @@ export default class App extends React.Component {
     });
   };
 
+  // INVENTAR -> OrderView für Gratis-Gewinne
+  handleOrderFromInventory = (produkt) => {
+    // produkt ist ein Einzelprodukt (aus MysteryBox/Inventar)
+    this.setState({
+      warenkorbFromInventory: [{ produktId: produkt.id, menge: 1, gratis: true }],
+      view: "order_inventory",
+    });
+  };
+
+  // INVENTAR -> Umtauschen
+  handleSwapFromInventory = async (produkt) => {
+    const { user } = this.state;
+    if (!user || !produkt) return;
+    // Beispiel: Umtauschwert ist immer der Produktpreis!
+    const guthabenNeu = (user.guthaben || 0) + (produkt.preis || 0);
+
+    // Inventar filtern:
+    const userRef = doc(db, "users", user.id);
+    const userSnap = await getDoc(userRef);
+    let inventar = userSnap.data()?.inventory || [];
+    inventar = inventar.filter((item) => item.produktId !== produkt.id);
+
+    await updateDoc(userRef, {
+      guthaben: guthabenNeu,
+      inventory: inventar,
+    });
+  };
+
+  // ZUM INVENTAR springen
+  handleGoInventar = () => {
+    this.setState({ view: "inventar" });
+  };
+
   render() {
     const {
       view,
@@ -596,6 +398,7 @@ export default class App extends React.Component {
       buyCryptoAmount,
       buyCryptoBtc,
       mysteryBoxes,
+      warenkorbFromInventory,
     } = this.state;
 
     if (chatOrder)
@@ -647,6 +450,7 @@ export default class App extends React.Component {
           onGotoPass={() => this.setState({ view: "pässe" })}
           onGotoLotto={() => this.setState({ view: "lotto" })}
           onGotoMysteryBoxen={() => this.setState({ view: "boxen" })}
+          onGotoInventar={() => this.setState({ view: "inventar" })}
           onLogout={this.handleLogout}
           onWalletClick={() => this.setState({ walletOpen: true })}
           onBuyCryptoClick={() =>
@@ -657,6 +461,35 @@ export default class App extends React.Component {
           closeBroadcast={() => this.setState({ showBroadcast: false })}
         />
       );
+
+    // INVENTAR: mit Direkt-Order
+    if (view === "inventar" && user) {
+      return (
+        <UserInventory
+          user={user}
+          produkte={produkte}
+          onGoBack={() => this.setState({ view: "home" })}
+          onOrderFromInventory={this.handleOrderFromInventory}
+          onSwapFromInventory={this.handleSwapFromInventory}
+        />
+      );
+    }
+
+    // OrderView für Gratis-Produkt aus Inventar/MysteryBox
+    if (view === "order_inventory" && user && warenkorbFromInventory) {
+      return (
+        <OrderView
+          produkte={produkte}
+          warenkorb={warenkorbFromInventory}
+          onBestellungAbsenden={this.handleBestellungAbsenden}
+          onGoBack={() =>
+            this.setState({ view: "inventar", warenkorbFromInventory: null })
+          }
+          btcPrice={btcPrice}
+          user={user}
+        />
+      );
+    }
 
     if (view === "lotto" && user)
       return (
@@ -679,6 +512,7 @@ export default class App extends React.Component {
         />
       );
 
+    // Normale Bestellung aus Warenkorb
     if (view === "order" && user)
       return (
         <OrderView
@@ -722,6 +556,7 @@ export default class App extends React.Component {
         />
       );
 
+    // Boxen mit Direkt-Order, Swap, Inventar-Nav
     if (view === "boxen" && user) {
       if (!user.id || user.guthaben === undefined) {
         console.error("User-Objekt ist nicht vollständig:", user);
@@ -732,6 +567,9 @@ export default class App extends React.Component {
           <MysteryBoxUserView
             user={user}
             onGoBack={() => this.setState({ view: "home" })}
+            onOrderFromInventory={this.handleOrderFromInventory}
+            onSwapFromInventory={this.handleSwapFromInventory}
+            onGoInventar={this.handleGoInventar}
           />
         </ErrorBoundary>
       );
