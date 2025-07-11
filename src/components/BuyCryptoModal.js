@@ -4,7 +4,7 @@ import { db } from "../firebase";
 
 // Adresse & Anbieter
 const ADMIN_BTC_ADDRESS = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
-const GUARDARIAN_URL = "https://guardarian.com/buy/crypto?to=BTC&address=" + ADMIN_BTC_ADDRESS + "&from=EUR";
+const GUARDARIAN_URL = "https://guardarian.com";
 
 export default function BuyCryptoModal({ user, onClose }) {
   // Step: 0=Start, 1=Pending
