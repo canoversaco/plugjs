@@ -509,6 +509,7 @@ export default class App extends React.Component {
     if (buyCryptoModalOpen)
       return (
         <BuyCryptoModal
+          user={user}
           onClose={() =>
             this.setState({
               buyCryptoModalOpen: false,
