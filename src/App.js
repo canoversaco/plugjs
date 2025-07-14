@@ -36,22 +36,6 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("Error in component:", error, errorInfo);
   }
-
-findActiveEtaOrder() {
-  const { orders, user } = this.state;
-  if (!user) return null;
-  const meineAktiven = orders.filter(
-    (o) =>
-      o.kunde === user.username &&
-      o.status === "unterwegs" &&
-      o.eta && // Nur wenn ETA gesetzt!
-      o.eta > Date.now() // ETA ist noch nicht vorbei
-  );
-  // Wenn mehrere, die nächste nehmen
-  return meineAktiven.length ? meineAktiven[0] : null;
-}
-
-  
   render() {
     if (this.state.hasError) {
       return (
@@ -64,7 +48,6 @@ findActiveEtaOrder() {
   }
 }
 
-// -- Telegram Notification zentral --
 async function sendTelegramNotification(user, text) {
   if (!user?.telegramChatId) return;
   try {
@@ -218,29 +201,38 @@ export default class App extends React.Component {
     }
   };
 
-  // ---------------------- //
-  // --- Notifications ---- //
-  // ---------------------- //
+  // --------- ETA FEATURE: -----------
+  // Finde Order vom eingeloggten User, der unterwegs & eta gesetzt
+  findActiveEtaOrder() {
+    const { orders, user } = this.state;
+    if (!user) return null;
+    const meineAktiven = orders.filter(
+      (o) =>
+        o.kunde === user.username &&
+        o.status === "unterwegs" &&
+        o.eta &&
+        o.eta > Date.now()
+    );
+    return meineAktiven.length ? meineAktiven[0] : null;
+  }
+  // ----------------------------------
 
-  // Chat Nachricht: ruft diese Methode nach dem Abspeichern einer neuen Nachricht auf!
   handleSendChatMessage = async (orderId, text, senderId) => {
     const orderRef = doc(db, "orders", orderId);
     const orderSnap = await getDoc(orderRef);
     const order = orderSnap.data();
     const users = this.state.users;
-    const sender = users.find(u => u.id === senderId);
+    const sender = users.find((u) => u.id === senderId);
 
-    // Empfänger ermitteln
     let empfaenger;
     if (order.kurierId && senderId === order.kurierId) {
-      // Kurier schreibt -> Kunde benachrichtigen
-      empfaenger = users.find(u => u.username === order.kunde);
+      empfaenger = users.find((u) => u.username === order.kunde);
     } else {
-      // Kunde schreibt -> Kurier/Admin benachrichtigen
-      empfaenger = users.find(u => u.id === order.kurierId) || users.find(u => (u.rolle === "admin" || u.role === "admin"));
+      empfaenger =
+        users.find((u) => u.id === order.kurierId) ||
+        users.find((u) => u.rolle === "admin" || u.role === "admin");
     }
 
-    // Telegram schicken
     if (empfaenger && empfaenger.telegramChatId) {
       await sendTelegramNotification(
         empfaenger,
@@ -249,13 +241,12 @@ export default class App extends React.Component {
     }
   };
 
-  // Order-Status ändern + Telegram
   handleOrderStatusUpdate = async (orderId, status) => {
     const orderRef = doc(db, "orders", orderId);
     await updateDoc(orderRef, { status });
     const orderSnap = await getDoc(orderRef);
     const order = orderSnap.data();
-    const kunde = this.state.users.find(u => u.username === order.kunde);
+    const kunde = this.state.users.find((u) => u.username === order.kunde);
     if (kunde?.telegramChatId) {
       await sendTelegramNotification(
         kunde,
@@ -264,13 +255,12 @@ export default class App extends React.Component {
     }
   };
 
-  // Standort ändern + Telegram
   handleOrderLocationUpdate = async (orderId, neuerStandort) => {
     const orderRef = doc(db, "orders", orderId);
     await updateDoc(orderRef, { standort: neuerStandort });
     const orderSnap = await getDoc(orderRef);
     const order = orderSnap.data();
-    const kunde = this.state.users.find(u => u.username === order.kunde);
+    const kunde = this.state.users.find((u) => u.username === order.kunde);
     if (kunde?.telegramChatId) {
       await sendTelegramNotification(
         kunde,
@@ -279,7 +269,6 @@ export default class App extends React.Component {
     }
   };
 
-  // Lotto-Gewinn + Telegram
   handleLottoWin = async (user, gewinn) => {
     if (user.telegramChatId) {
       await sendTelegramNotification(
@@ -288,10 +277,6 @@ export default class App extends React.Component {
       );
     }
   };
-
-  // ---------------------- //
-  // Rest bleibt wie gehabt //
-  // ---------------------- //
 
   produktHinzufügen = async (produkt) => {
     await addDoc(collection(db, "produkte"), produkt);
@@ -484,212 +469,243 @@ export default class App extends React.Component {
   };
 
   render() {
-    const {
-      view,
-      user,
-      users,
-      produkte,
-      warenkorb,
-      orders,
-      broadcast,
-      showBroadcast,
-      chatOrder,
-      walletOpen,
-      btcPrice,
-      buyCryptoModalOpen,
-      buyCryptoAmount,
-      buyCryptoBtc,
-      mysteryBoxes,
-      warenkorbFromInventory,
-    } = this.state;
+    // -- ETA-Banner für Kunde, in jeder View oben!
+    const activeEtaOrder = this.findActiveEtaOrder && this.findActiveEtaOrder();
+    return (
+      <>
+        {/* ETA-Banner für Kunden */}
+        {activeEtaOrder &&
+          this.state.user &&
+          this.state.user.rolle !== "kurier" &&
+          activeEtaOrder.eta > Date.now() && (
+            <>
+              <style>
+                {`
+                  @keyframes etafadein {
+                    from { opacity: 0; transform: translateY(-20px) scale(0.97);}
+                    to   { opacity: 1; transform: translateY(0) scale(1);}
+                  }
+                `}
+              </style>
+              <div
+                style={{
+                  position: "fixed",
+                  top: 18,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background:
+                    "linear-gradient(100deg, #38bdf8 65%, #a3e635 120%)",
+                  color: "#18181b",
+                  borderRadius: 15,
+                  padding: "16px 38px",
+                  boxShadow: "0 4px 24px #23262e33",
+                  zIndex: 5000,
+                  fontSize: 20,
+                  fontWeight: 900,
+                  letterSpacing: 0.01,
+                  minWidth: 240,
+                  textAlign: "center",
+                  border: "2px solid #18181b",
+                  animation: "etafadein 0.23s cubic-bezier(.18,.82,.36,1.13)"
+                }}
+              >
+                <span role="img" aria-label="Ankunft">⏳</span>
+                &nbsp;Ankunft in ca.&nbsp;
+                <span style={{ color: "#0e820e" }}>
+                  {Math.max(
+                    1,
+                    Math.round((activeEtaOrder.eta - Date.now()) / 60000)
+                  )}
+                </span>
+                &nbsp;Minuten&nbsp;
+                <span role="img" aria-label="Delivery">🛵</span>
+              </div>
+            </>
+          )}
 
-    if (chatOrder)
-      return (
-        <ChatWindow
-          user={user}
-          order={chatOrder}
-          onClose={() => this.setState({ chatOrder: null })}
-          onSendMessage={this.handleSendChatMessage} // wichtig!
-        />
-      );
+        {/* ---- Rest wie gehabt ---- */}
 
-    if (walletOpen)
-      return (
-        <WalletModal
-          user={user}
-          btcPrice={btcPrice}
-          onClose={() => this.setState({ walletOpen: false })}
-          onBuyCryptoClick={this.handleBuyCryptoClick}
-        />
-      );
-
-    if (buyCryptoModalOpen)
-      return (
-        <BuyCryptoModal
-          user={user}
-          onClose={() =>
-            this.setState({
-              buyCryptoModalOpen: false,
-              buyCryptoAmount: null,
-              buyCryptoBtc: null,
-            })
-          }
-          amount={buyCryptoAmount}
-          btc={buyCryptoBtc}
-        />
-      );
-
-    if (view === "login")
-      return <LoginView users={users} onLogin={this.handleLogin} />;
-
-    if (view === "home" && user)
-      return (
-        <HomeView
-          user={user}
-          btcPrice={btcPrice}
-          onGotoMenu={() => this.setState({ view: "menü" })}
-          onGotoOrders={() => this.setState({ view: "meine" })}
-          onGotoAdmin={() => this.setState({ view: "admin" })}
-          onGotoKurier={() => this.setState({ view: "kurier" })}
-          onGotoPass={() => this.setState({ view: "pässe" })}
-          onGotoLotto={() => this.setState({ view: "lotto" })}
-          onGotoMysteryBoxen={() => this.setState({ view: "boxen" })}
-          onGotoInventar={() => this.setState({ view: "inventar" })}
-          onLogout={this.handleLogout}
-          onWalletClick={() => this.setState({ walletOpen: true })}
-          onBuyCryptoClick={() =>
-            this.setState({ buyCryptoModalOpen: true, buyCryptoAmount: null })
-          }
-          broadcast={broadcast}
-          showBroadcast={showBroadcast}
-          closeBroadcast={() => this.setState({ showBroadcast: false })}
-        />
-      );
-
-    if (view === "inventar" && user) {
-      return (
-        <UserInventory
-          user={user}
-          produkte={produkte}
-          onGoBack={() => this.setState({ view: "home" })}
-          onOrderFromInventory={this.handleOrderFromInventory}
-          onSwapFromInventory={this.handleSwapFromInventory}
-        />
-      );
-    }
-
-    if (view === "order_inventory" && user && warenkorbFromInventory) {
-      return (
-        <OrderView
-          produkte={produkte}
-          warenkorb={warenkorbFromInventory}
-          onBestellungAbsenden={this.handleBestellungAbsenden}
-          onGoBack={() =>
-            this.setState({ view: "inventar", warenkorbFromInventory: null })
-          }
-          btcPrice={btcPrice}
-          user={user}
-        />
-      );
-    }
-
-    if (view === "lotto" && user)
-      return (
-        <LottoView
-          user={user}
-          users={users}
-          onGoBack={() => this.setState({ view: "home" })}
-          onLottoWin={this.handleLottoWin} // wichtig!
-        />
-      );
-
-    if (view === "menü" && user)
-      return (
-        <MenuView
-          produkte={produkte}
-          warenkorb={warenkorb}
-          onAddToCart={this.handleAddToCart}
-          onRemoveFromCart={this.handleRemoveFromCart}
-          onCheckout={() => this.setState({ view: "order" })}
-          onGoBack={() => this.setState({ view: "home" })}
-        />
-      );
-
-    if (view === "order" && user)
-      return (
-        <OrderView
-          produkte={produkte}
-          warenkorb={warenkorb}
-          onBestellungAbsenden={this.handleBestellungAbsenden}
-          onGoBack={() => this.setState({ view: "menü" })}
-          btcPrice={btcPrice}
-          user={user}
-        />
-      );
-
-    if (view === "meine" && user)
-      return (
-        <KundeView
-          user={user}
-          orders={orders}
-          produkte={produkte}
-          onGoBack={() => this.setState({ view: "home" })}
-          onChat={(order) => this.setState({ chatOrder: order })}
-        />
-      );
-
-    if (view === "kurier" && user)
-      return (
-        <KurierView
-          user={user}
-          orders={orders}
-          produkte={produkte}
-          onGoBack={() => this.setState({ view: "home" })}
-          onChat={(order) => this.setState({ chatOrder: order })}
-        />
-      );
-
-    if (view === "pässe" && user)
-      return (
-        <PassPanel
-          user={user}
-          onGoBack={() => this.setState({ view: "home" })}
-          onBuyPass={this.handleBuyPass}
-        />
-      );
-
-    if (view === "boxen" && user) {
-      if (!user.id || user.guthaben === undefined) {
-        console.error("User-Objekt ist nicht vollständig:", user);
-        return <div>Fehler: Benutzerdaten unvollständig</div>;
-      }
-      return (
-        <ErrorBoundary>
-          <MysteryBoxUserView
-            user={user}
-            onGoBack={() => this.setState({ view: "home" })}
-            onOrderFromInventory={this.handleOrderFromInventory}
-            onSwapFromInventory={this.handleSwapFromInventory}
-            onGoInventar={this.handleGoInventar}
+        {this.state.chatOrder && (
+          <ChatWindow
+            user={this.state.user}
+            order={this.state.chatOrder}
+            onClose={() => this.setState({ chatOrder: null })}
+            onSendMessage={this.handleSendChatMessage}
           />
-        </ErrorBoundary>
-      );
-    }
-
-    if (view === "admin" && user)
-      return (
-        <AdminView
-          user={user}
-          produkte={produkte}
-          orders={orders}
-          users={users}
-          onGoBack={() => this.setState({ view: "home" })}
-          onChat={(order) => this.setState({ chatOrder: order })}
-          onProduktAdd={this.produktHinzufügen}
-          onProduktUpdate={this.produktUpdaten}
-        />
-      );
-
-    return <div>Unbekannte Ansicht</div>;
+        )}
+        {this.state.walletOpen && (
+          <WalletModal
+            user={this.state.user}
+            btcPrice={this.state.btcPrice}
+            onClose={() => this.setState({ walletOpen: false })}
+            onBuyCryptoClick={this.handleBuyCryptoClick}
+          />
+        )}
+        {this.state.buyCryptoModalOpen && (
+          <BuyCryptoModal
+            user={this.state.user}
+            onClose={() =>
+              this.setState({
+                buyCryptoModalOpen: false,
+                buyCryptoAmount: null,
+                buyCryptoBtc: null,
+              })
+            }
+            amount={this.state.buyCryptoAmount}
+            btc={this.state.buyCryptoBtc}
+          />
+        )}
+        {this.state.view === "login" && (
+          <LoginView
+            users={this.state.users}
+            onLogin={this.handleLogin}
+          />
+        )}
+        {this.state.view === "home" && this.state.user && (
+          <HomeView
+            user={this.state.user}
+            btcPrice={this.state.btcPrice}
+            onGotoMenu={() => this.setState({ view: "menü" })}
+            onGotoOrders={() => this.setState({ view: "meine" })}
+            onGotoAdmin={() => this.setState({ view: "admin" })}
+            onGotoKurier={() => this.setState({ view: "kurier" })}
+            onGotoPass={() => this.setState({ view: "pässe" })}
+            onGotoLotto={() => this.setState({ view: "lotto" })}
+            onGotoMysteryBoxen={() => this.setState({ view: "boxen" })}
+            onGotoInventar={() => this.setState({ view: "inventar" })}
+            onLogout={this.handleLogout}
+            onWalletClick={() => this.setState({ walletOpen: true })}
+            onBuyCryptoClick={() =>
+              this.setState({ buyCryptoModalOpen: true, buyCryptoAmount: null })
+            }
+            broadcast={this.state.broadcast}
+            showBroadcast={this.state.showBroadcast}
+            closeBroadcast={() => this.setState({ showBroadcast: false })}
+          />
+        )}
+        {this.state.view === "inventar" &&
+          this.state.user && (
+            <UserInventory
+              user={this.state.user}
+              produkte={this.state.produkte}
+              onGoBack={() => this.setState({ view: "home" })}
+              onOrderFromInventory={this.handleOrderFromInventory}
+              onSwapFromInventory={this.handleSwapFromInventory}
+            />
+          )}
+        {this.state.view === "order_inventory" &&
+          this.state.user &&
+          this.state.warenkorbFromInventory && (
+            <OrderView
+              produkte={this.state.produkte}
+              warenkorb={this.state.warenkorbFromInventory}
+              onBestellungAbsenden={this.handleBestellungAbsenden}
+              onGoBack={() =>
+                this.setState({
+                  view: "inventar",
+                  warenkorbFromInventory: null,
+                })
+              }
+              btcPrice={this.state.btcPrice}
+              user={this.state.user}
+            />
+          )}
+        {this.state.view === "lotto" && this.state.user && (
+          <LottoView
+            user={this.state.user}
+            users={this.state.users}
+            onGoBack={() => this.setState({ view: "home" })}
+            onLottoWin={this.handleLottoWin}
+          />
+        )}
+        {this.state.view === "menü" && this.state.user && (
+          <MenuView
+            produkte={this.state.produkte}
+            warenkorb={this.state.warenkorb}
+            onAddToCart={this.handleAddToCart}
+            onRemoveFromCart={this.handleRemoveFromCart}
+            onCheckout={() => this.setState({ view: "order" })}
+            onGoBack={() => this.setState({ view: "home" })}
+          />
+        )}
+        {this.state.view === "order" && this.state.user && (
+          <OrderView
+            produkte={this.state.produkte}
+            warenkorb={this.state.warenkorb}
+            onBestellungAbsenden={this.handleBestellungAbsenden}
+            onGoBack={() => this.setState({ view: "menü" })}
+            btcPrice={this.state.btcPrice}
+            user={this.state.user}
+          />
+        )}
+        {this.state.view === "meine" && this.state.user && (
+          <KundeView
+            user={this.state.user}
+            orders={this.state.orders}
+            produkte={this.state.produkte}
+            onGoBack={() => this.setState({ view: "home" })}
+            onChat={(order) => this.setState({ chatOrder: order })}
+          />
+        )}
+        {this.state.view === "kurier" && this.state.user && (
+          <KurierView
+            user={this.state.user}
+            orders={this.state.orders}
+            produkte={this.state.produkte}
+            onGoBack={() => this.setState({ view: "home" })}
+            onChat={(order) => this.setState({ chatOrder: order })}
+          />
+        )}
+        {this.state.view === "pässe" && this.state.user && (
+          <PassPanel
+            user={this.state.user}
+            onGoBack={() => this.setState({ view: "home" })}
+            onBuyPass={this.handleBuyPass}
+          />
+        )}
+        {this.state.view === "boxen" && this.state.user && (
+          !this.state.user.id || this.state.user.guthaben === undefined ? (
+            <div>Fehler: Benutzerdaten unvollständig</div>
+          ) : (
+            <ErrorBoundary>
+              <MysteryBoxUserView
+                user={this.state.user}
+                onGoBack={() => this.setState({ view: "home" })}
+                onOrderFromInventory={this.handleOrderFromInventory}
+                onSwapFromInventory={this.handleSwapFromInventory}
+                onGoInventar={this.handleGoInventar}
+              />
+            </ErrorBoundary>
+          )
+        )}
+        {this.state.view === "admin" && this.state.user && (
+          <AdminView
+            user={this.state.user}
+            produkte={this.state.produkte}
+            orders={this.state.orders}
+            users={this.state.users}
+            onGoBack={() => this.setState({ view: "home" })}
+            onChat={(order) => this.setState({ chatOrder: order })}
+            onProduktAdd={this.produktHinzufügen}
+            onProduktUpdate={this.produktUpdaten}
+          />
+        )}
+        {/* Fallback */}
+        {![
+          "login",
+          "home",
+          "inventar",
+          "order_inventory",
+          "lotto",
+          "menü",
+          "order",
+          "meine",
+          "kurier",
+          "pässe",
+          "boxen",
+          "admin"
+        ].includes(this.state.view) && <div>Unbekannte Ansicht</div>}
+      </>
+    );
   }
 }
