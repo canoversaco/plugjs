@@ -657,42 +657,76 @@ export default function KurierView({
                   </td>
                   <td style={{ padding: 8 }}>
                     <span
-                      style={{
-                        background: STATUS_COLORS[order.status] || "#23262e",
-                        color: "#18181b",
-                        borderRadius: 7,
-                        fontWeight: 900,
-                        padding: "3px 11px",
-                        fontSize: 14,
-                        cursor: "pointer",
-                        display: "inline-block",
-                      }}
-                      onClick={() => setStatusEditId(order.id)}
-                    >
-                      {order.status}
-                    </span>
-                    {statusEditId === order.id && (
-                      <select
-                        autoFocus
-                        value={order.status}
-                        onBlur={() => setStatusEditId(null)}
-                        onChange={(e) =>
-                          handleStatusChange(order.id, e.target.value)
-                        }
-                        style={{
-                          marginLeft: 7,
-                          borderRadius: 7,
-                          padding: 4,
-                          fontWeight: 700,
-                          fontSize: 15,
-                        }}
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+  style={{
+    background: STATUS_COLORS[order.status] || "#23262e",
+    color: "#18181b",
+    borderRadius: 7,
+    fontWeight: 900,
+    padding: "3px 11px",
+    fontSize: 14,
+    cursor: "pointer",
+    display: "inline-block",
+  }}
+  onClick={() => setStatusEditId(order.id)}
+>
+  {order.status}
+</span>
+{statusEditId === order.id && (
+  <div style={{ display: "inline-flex", alignItems: "center", marginLeft: 7 }}>
+    <select
+      autoFocus
+      value={order.status}
+      onBlur={() => setStatusEditId(null)}
+      onChange={async (e) => {
+        const newStatus = e.target.value;
+        // Wenn unterwegs gewählt, nach ETA fragen
+        if (newStatus === "unterwegs") {
+          const min = prompt("Ungefähre Ankunft in wie vielen Minuten? (z.B. 10)");
+          const eta = parseInt(min, 10);
+          if (!isNaN(eta) && eta > 0) {
+            await updateDoc(doc(db, "orders", order.id), {
+              status: newStatus,
+              eta: Date.now() + eta * 60000,
+            });
+          } else {
+            // nur Status ohne ETA setzen
+            await handleStatusChange(order.id, newStatus);
+          }
+        } else {
+          await updateDoc(doc(db, "orders", order.id), {
+            status: newStatus,
+            eta: null,
+          });
+        }
+        setStatusEditId(null);
+      }}
+      style={{
+        borderRadius: 7,
+        padding: 4,
+        fontWeight: 700,
+        fontSize: 15,
+      }}
+    >
+      {STATUS_OPTIONS.map((s) => (
+        <option key={s} value={s}>
+          {s}
+        </option>
+      ))}
+    </select>
+    {/* ETA anzeigen, falls unterwegs */}
+    {order.status === "unterwegs" && order.eta && (
+      <span style={{
+        marginLeft: 6,
+        color: "#a3e635",
+        fontWeight: 700,
+        fontSize: 15
+      }}>
+        ETA: {Math.max(1, Math.round((order.eta - Date.now()) / 60000))} Min.
+      </span>
+    )}
+  </div>
+)}
+
                     )}
                   </td>
                   <td style={{ padding: 8 }}>
