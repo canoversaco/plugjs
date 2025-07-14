@@ -8,6 +8,7 @@ export default class KundeView extends React.Component {
     rateModal: null,
     ratings: { service: 0, wartezeit: 0, qualitaet: 0 },
     error: "",
+    changeConfirmLoading: null, // ID der Bestellung, die gerade verarbeitet wird
   };
 
   openRating(orderId) {
@@ -45,7 +46,46 @@ export default class KundeView extends React.Component {
     }
   }
 
-  // Robust: Erkenne lat/lon-Koordinaten-Array oder null
+  // Annahme der Änderung
+  async handleAcceptChange(order) {
+    this.setState({ changeConfirmLoading: order.id });
+    const { changeRequest = {} } = order;
+    try {
+      // Optional: Preis neu berechnen!
+      let newWarenkorb = changeRequest.newWarenkorb || order.warenkorb;
+      let endpreis = 0;
+      if (Array.isArray(newWarenkorb) && this.props.produkte) {
+        endpreis = newWarenkorb.reduce((sum, item) => {
+          const p = this.props.produkte.find((pr) => pr.id === item.produktId);
+          return sum + (p?.preis || 0) * Number(item.menge);
+        }, 0);
+      }
+      await updateDoc(doc(db, "orders", order.id), {
+        warenkorb: newWarenkorb,
+        endpreis,
+        changeRequest: null,
+      });
+      alert("Änderung übernommen.");
+    } catch (e) {
+      alert("Fehler beim Übernehmen.");
+    }
+    this.setState({ changeConfirmLoading: null });
+  }
+
+  // Ablehnen der Änderung
+  async handleDeclineChange(order) {
+    this.setState({ changeConfirmLoading: order.id });
+    try {
+      await updateDoc(doc(db, "orders", order.id), {
+        changeRequest: null,
+      });
+      alert("Änderung wurde abgelehnt.");
+    } catch (e) {
+      alert("Fehler beim Ablehnen.");
+    }
+    this.setState({ changeConfirmLoading: null });
+  }
+
   renderTreffpunkt(treffpunkt) {
     if (
       Array.isArray(treffpunkt) &&
@@ -54,7 +94,6 @@ export default class KundeView extends React.Component {
       typeof treffpunkt[1] === "number" &&
       (treffpunkt[0] !== 0 || treffpunkt[1] !== 0)
     ) {
-      // Link für Google Maps generieren
       return (
         <>
           <a
@@ -86,6 +125,139 @@ export default class KundeView extends React.Component {
   renderEta(etaTimestamp) {
     const diff = Math.round((etaTimestamp - Date.now()) / 60000);
     return diff > 1 ? diff : 1;
+  }
+
+  renderChangeRequest(order) {
+    const { produkte } = this.props;
+    const { changeRequest } = order;
+    if (!changeRequest) return null;
+
+    const changed = Array.isArray(changeRequest.changedItems)
+      ? changeRequest.changedItems
+      : [];
+
+    // Zeige den neuen Warenkorb
+    const newWarenkorb = Array.isArray(changeRequest.newWarenkorb)
+      ? changeRequest.newWarenkorb
+      : order.warenkorb;
+
+    return (
+      <div
+        style={{
+          background: "#18181b",
+          border: "2px dashed #fbbf24",
+          borderRadius: 14,
+          margin: "15px 0 18px 0",
+          padding: 14,
+          boxShadow: "0 4px 28px #a3e63522",
+        }}
+      >
+        <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: 17 }}>
+          🚧 Änderungsvorschlag von Kurier:
+        </div>
+        {changeRequest.text && (
+          <div
+            style={{
+              color: "#eab308",
+              margin: "7px 0",
+              fontWeight: 600,
+              fontSize: 15,
+            }}
+          >
+            {changeRequest.text}
+          </div>
+        )}
+        {changed.length > 0 && (
+          <div style={{ color: "#fbbf24", margin: "8px 0 5px 0", fontWeight: 600 }}>
+            Änderungen:
+            <ul style={{ color: "#fff", marginTop: 4 }}>
+              {changed.map((c, idx) => {
+                const p = produkte.find((pr) => pr.id === c.produktId);
+                return (
+                  <li key={idx}>
+                    <b>{p?.name || "?"}</b>{" "}
+                    {c.oldMenge !== c.newMenge
+                      ? `Menge: ${c.oldMenge} → ${c.newMenge}`
+                      : c.removed
+                      ? `ENTFERNT`
+                      : null}{" "}
+                    {c.note && (
+                      <span style={{ color: "#fbbf24", fontWeight: 600 }}>
+                        ({c.note})
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        <div style={{ color: "#fbbf24", fontWeight: 600, marginTop: 8, marginBottom: 3 }}>
+          Neuer Warenkorb (nach Änderung):
+        </div>
+        <ul style={{ paddingLeft: 16, margin: "5px 0 0 0" }}>
+          {newWarenkorb.map((item, idx) => {
+            const p = produkte.find((pr) => pr.id === item.produktId);
+            return (
+              <li key={idx} style={{ marginBottom: 2 }}>
+                <img
+                  src={images[p?.bildName] || images.defaultBild}
+                  alt={p?.name}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    objectFit: "cover",
+                    borderRadius: 6,
+                    marginRight: 8,
+                    verticalAlign: "middle",
+                  }}
+                />
+                {p?.name || "?"} × {item.menge}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div style={{ marginTop: 15 }}>
+          <button
+            onClick={() => this.handleAcceptChange(order)}
+            style={{
+              background: "#a3e635",
+              color: "#18181b",
+              border: 0,
+              borderRadius: 8,
+              padding: "9px 24px",
+              fontWeight: 800,
+              fontSize: 17,
+              cursor: "pointer",
+              marginRight: 7,
+              opacity: this.state.changeConfirmLoading === order.id ? 0.5 : 1,
+            }}
+            disabled={this.state.changeConfirmLoading === order.id}
+          >
+            ✅ Änderung übernehmen
+          </button>
+          <button
+            onClick={() => this.handleDeclineChange(order)}
+            style={{
+              background: "#f87171",
+              color: "#fff",
+              border: 0,
+              borderRadius: 8,
+              padding: "9px 22px",
+              fontWeight: 700,
+              fontSize: 16,
+              cursor: "pointer",
+              opacity: this.state.changeConfirmLoading === order.id ? 0.5 : 1,
+            }}
+            disabled={this.state.changeConfirmLoading === order.id}
+          >
+            ❌ Ablehnen
+          </button>
+        </div>
+      </div>
+    );
   }
 
   render() {
@@ -156,6 +328,9 @@ export default class KundeView extends React.Component {
                   {order.status || "?"}
                 </span>
               </div>
+
+              {/* Änderungsvorschlag von Kurier */}
+              {order.changeRequest && this.renderChangeRequest(order)}
 
               {/* ETA-Anzeige, falls unterwegs */}
               {order.status === "unterwegs" &&
