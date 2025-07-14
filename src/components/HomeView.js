@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Wallet,
   Ticket,
@@ -12,8 +12,8 @@ import {
   Boxes,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import NotificationPopup from "./NotificationPopup"; // ACHTUNG: importieren!
 
-// Hilfsfunktion für Restzeit
 function msToDHM(ms) {
   const t = Math.max(0, ms);
   const days = Math.floor(t / (1000 * 60 * 60 * 24));
@@ -22,7 +22,6 @@ function msToDHM(ms) {
   return `${days > 0 ? days + "d " : ""}${hours}h ${mins}m`;
 }
 
-// Modernere Card/Tile-Struktur für Aktionen!
 const ACTIONS = [
   {
     id: "menu",
@@ -48,7 +47,6 @@ const ACTIONS = [
     bg: "linear-gradient(135deg,#a3e635 50%,#38bdf8bb 100%)",
     action: "onGotoPass",
   },
-  // --- LOTTO BUTTON HIER ---
   {
     id: "lotto",
     label: "Lotto",
@@ -58,7 +56,6 @@ const ACTIONS = [
     border: "2px solid #38bdf8",
     action: "onGotoLotto",
   },
-  // --- MYSTERY BOXEN BUTTON (NEU) ---
   {
     id: "mystery",
     label: "Mystery Boxen",
@@ -69,7 +66,6 @@ const ACTIONS = [
     action: "onGotoMysteryBoxen",
     animate: true,
   },
-  // --- INVENTAR BUTTON (NEU) ---
   {
     id: "inventar",
     label: "Inventar",
@@ -79,7 +75,6 @@ const ACTIONS = [
     border: "2px solid #38bdf8",
     action: "onGotoInventar",
   },
-  // -------------------------
   {
     id: "crypto",
     label: "Guthaben aufladen",
@@ -119,43 +114,22 @@ const ACTIONS = [
   },
 ];
 
-// BROADCAST Demo
-const DEMO_BROADCASTS = [
-  {
-    id: 1,
-    text: "🎁 Mystery Box Update: Öffne eine Mystery Box und lass dich überraschen!",
-  },
-  {
-    id: 2,
-    text: "🛒 Schaue dir die neuen Wochen-/Monatspässe an und fange an zu sparen!",
-  },
-  {
-    id: 3,
-    text: "🔴 Nimm an der wöchentlichen Lotto Ziehung teil!",
-  },
-];
-
 export default function HomeView({
   user,
+  orders = [],
   onGotoMenu,
   onGotoOrders,
   onGotoAdmin,
   onGotoKurier,
   onLogout,
-  showBroadcast,
-  broadcast,
   onGotoPass,
-  closeBroadcast,
   onWalletClick,
   onBuyCryptoClick,
   onGotoLotto,
   onGotoMysteryBoxen,
-  onGotoInventar, // <-- WICHTIG: Wird vom App.js übergeben!
+  onGotoInventar,
 }) {
-  const [broadcasts, setBroadcasts] = useState(DEMO_BROADCASTS);
-
-  const removeBroadcast = (id) =>
-    setBroadcasts((prev) => prev.filter((b) => b.id !== id));
+  const [notification, setNotification] = useState(null);
 
   // Aktiver Pass
   const aktiverPass =
@@ -166,7 +140,6 @@ export default function HomeView({
   const rabattLimit =
     (aktiverPass?.maxRabatt ?? aktiverPass?.gesparlimit ?? 0) - gespart;
 
-  // Grid-Layout für Aktionen
   const role = user.rolle || user.role;
   const actionGrid = ACTIONS.filter(
     (a) =>
@@ -203,6 +176,26 @@ export default function HomeView({
     }
   };
 
+  // --- Notification für offene Bewertung ---
+  useEffect(() => {
+    if (
+      user &&
+      orders &&
+      orders.some((o) => o.kunde === user.username && o.status === "abgeschlossen" && !o.rating)
+    ) {
+      setNotification({
+        message: "Du hast eine abgeschlossene Bestellung, die du noch bewerten kannst! 🌟",
+        actionText: "Jetzt bewerten",
+        onAction: () => {
+          setNotification(null);
+          if (typeof onGotoOrders === "function") onGotoOrders();
+        },
+      });
+    }
+  }, [orders, user, onGotoOrders]);
+
+  // Du kannst weitere Notifications hier ergänzen!
+
   return (
     <div
       style={{
@@ -215,6 +208,16 @@ export default function HomeView({
         overflow: "auto",
       }}
     >
+      {/* Notification Popup */}
+      {notification && (
+        <NotificationPopup
+          message={notification.message}
+          actionText={notification.actionText}
+          onAction={notification.onAction}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
       {/* Wallet oben rechts */}
       <div style={{ position: "fixed", right: 32, top: 32, zIndex: 80 }}>
         <button
@@ -255,8 +258,7 @@ export default function HomeView({
               letterSpacing: 0.09,
             }}
             onClick={() => {
-              // Telegram-Username deines Bots:
-              const tgBotName = "PlugApp_bot"; // z.B. plugbenachrichtigungsbot
+              const tgBotName = "PlugApp_bot";
               const url = `https://t.me/${tgBotName}?start=plug_${user.id}`;
               window.open(url, "_blank");
             }}
@@ -402,75 +404,6 @@ export default function HomeView({
             </div>
           </div>
         )}
-
-        {/* Broadcast-Karten animiert */}
-        <AnimatePresence>
-          {broadcasts.map((b, i) => (
-            <motion.div
-              key={b.id}
-              initial={{ x: 60, opacity: 0, scale: 0.92 }}
-              animate={{
-                x: 0,
-                opacity: 1,
-                scale: 1,
-                background:
-                  i % 2 === 0
-                    ? [
-                        "linear-gradient(93deg,#38bdf8dd 65%,#a3e63544 100%)",
-                        "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
-                        "linear-gradient(93deg,#38bdf8dd 65%,#a3e63544 100%)",
-                      ]
-                    : [
-                        "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
-                        "linear-gradient(93deg,#38bdf8dd 65%,#a3e63544 100%)",
-                        "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
-                      ],
-              }}
-              exit={{ x: 55, opacity: 0, scale: 0.85 }}
-              transition={{
-                duration: 0.35,
-                type: "spring",
-                background: {
-                  repeat: Infinity,
-                  duration: 4.4,
-                  ease: "linear",
-                },
-              }}
-              style={{
-                borderRadius: 12,
-                padding: "10px 15px",
-                fontSize: 15.5,
-                fontWeight: 700,
-                marginBottom: 9,
-                boxShadow: "0 1.5px 8px #23262e44",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                color: "#fff",
-              }}
-            >
-              <span style={{ flex: 1 }}>{b.text}</span>
-              <button
-                onClick={() => removeBroadcast(b.id)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#fff",
-                  fontSize: 19,
-                  fontWeight: 800,
-                  marginLeft: 15,
-                  cursor: "pointer",
-                  lineHeight: "1.3",
-                  transition: "color 0.14s",
-                  opacity: 0.84,
-                }}
-                aria-label="Schließen"
-              >
-                ×
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
 
         {/* Grid-Layout für Aktionen! */}
         <div
