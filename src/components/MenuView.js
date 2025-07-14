@@ -2,7 +2,6 @@
 import React from "react";
 import images from "./images/images"; // Pfad ggf. anpassen!
 
-// Kategorie-Emojis als kleines Extra:
 const KAT_EMOJIS = {
   Standard: "🛍️",
   Hase: "🍀",
@@ -25,11 +24,11 @@ export default class MenuView extends React.Component {
       selectedKat: kategorien[0]?.name || "",
       menge: {},
       error: "",
-      imgActive: "", // für Klick-Animation
+      imgActive: "",
+      cartOpen: false,
     };
   }
 
-  // Produkte filtern und nach Preis sortieren
   filterProdukte = () => {
     const { produkte } = this.props;
     const { selectedKat } = this.state;
@@ -44,11 +43,13 @@ export default class MenuView extends React.Component {
     }));
   };
 
-  // Für Bild-Klickanimation
   handleImgClick = (id) => {
     this.setState({ imgActive: id });
     setTimeout(() => this.setState({ imgActive: "" }), 210);
   };
+
+  handleCartOpen = () => this.setState({ cartOpen: true });
+  handleCartClose = () => this.setState({ cartOpen: false });
 
   render() {
     const {
@@ -59,7 +60,7 @@ export default class MenuView extends React.Component {
       onGoBack,
       produkte = [],
     } = this.props;
-    const { kategorien, selectedKat, menge, error, imgActive } = this.state;
+    const { kategorien, selectedKat, menge, error, imgActive, cartOpen } = this.state;
 
     const cartMenge = (produktId) =>
       warenkorb.find((w) => w.produktId === produktId)?.menge || 0;
@@ -79,7 +80,6 @@ export default class MenuView extends React.Component {
           padding: 30,
         }}
       >
-        {/* Animations-Styles */}
         <style>{`
           .menu-kat-btn {
             transition: background 0.18s, color 0.14s, transform 0.13s;
@@ -103,13 +103,65 @@ export default class MenuView extends React.Component {
             transform: scale(1.18) !important;
             box-shadow: 0 5px 25px #a3e63580;
           }
-          .menu-cart-btn, .menu-remove-btn {
-            transition: background 0.13s, color 0.13s, transform 0.14s;
-            box-shadow: 0 2px 8px #38bdf822;
+          .menu-cart-fab {
+            position: fixed;
+            right: 24px;
+            bottom: 32px;
+            z-index: 120;
+            background: linear-gradient(100deg, #a3e635 72%, #38bdf8 128%);
+            color: #18181b;
+            border: none;
+            border-radius: 100px;
+            box-shadow: 0 2px 22px #a3e63544;
+            padding: 0 25px 0 21px;
+            font-weight: 900;
+            font-size: 22px;
+            min-width: 90px;
+            min-height: 66px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: box-shadow 0.17s, background 0.18s;
+            outline: none;
           }
-          .menu-cart-btn:active, .menu-remove-btn:active {
-            transform: scale(0.96);
-            filter: brightness(0.93);
+          .menu-cart-fab:hover {
+            box-shadow: 0 4px 30px #38bdf877;
+            background: linear-gradient(90deg, #38bdf8 75%, #a3e635 120%);
+          }
+          .cart-drawer-bg {
+            position: fixed;
+            inset: 0;
+            background: rgba(24,24,27, 0.73);
+            z-index: 199;
+            animation: fadeinbg .18s;
+          }
+          .cart-drawer {
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 375px;
+            max-width: 100vw;
+            background: #18181b;
+            box-shadow: -3px 0 25px #23262e88;
+            z-index: 200;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            animation: slideinright .21s cubic-bezier(.31,1.04,.59,.98);
+          }
+          @keyframes fadeinbg {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideinright {
+            from { transform: translateX(120px); opacity: 0; }
+            to { transform: none; opacity: 1; }
+          }
+          @media (max-width: 550px) {
+            .cart-drawer { width: 99vw; }
+            .menu-cart-fab { right: 7px; bottom: 12px; min-width: 70px; }
           }
         `}</style>
 
@@ -372,74 +424,172 @@ export default class MenuView extends React.Component {
           )}
         </div>
 
-        {/* Warenkorb und Kasse */}
-        <div
-          style={{
-            margin: "0 auto",
-            background: "#18181b",
-            borderRadius: 19,
-            padding: 23,
-            maxWidth: 500,
-            boxShadow: "0 2px 28px #00000025",
-          }}
+        {/* FLOATING WARENKORB-BUTTON */}
+        <button
+          className="menu-cart-fab"
+          onClick={this.handleCartOpen}
+          aria-label="Warenkorb öffnen"
         >
-          <h3 style={{ fontWeight: 900, fontSize: 20, marginBottom: 13 }}>
-            🛒 Dein Warenkorb
-          </h3>
-          {warenkorb.length === 0 ? (
-            <div style={{ color: "#a1a1aa", padding: 10 }}>
-              Noch keine Produkte im Warenkorb.
+          🛒
+          <span style={{ marginLeft: 1, color: "#18181b", fontWeight: 900 }}>
+            {warenkorb.length}
+          </span>
+          <span style={{ color: "#23262e", fontSize: 15, fontWeight: 700, marginLeft: 7 }}>
+            {gesamt.toFixed(2)} €
+          </span>
+        </button>
+
+        {/* CART DRAWER */}
+        {cartOpen && (
+          <>
+            <div className="cart-drawer-bg" onClick={this.handleCartClose}></div>
+            <div className="cart-drawer">
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid #23262e",
+                padding: "23px 23px 12px 23px",
+                minHeight: 70,
+              }}>
+                <h3 style={{ fontWeight: 900, fontSize: 21, margin: 0 }}>
+                  🛒 Dein Warenkorb
+                </h3>
+                <button
+                  onClick={this.handleCartClose}
+                  style={{
+                    background: "#23262e",
+                    color: "#fff",
+                    borderRadius: 8,
+                    border: 0,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    padding: "6px 16px",
+                    cursor: "pointer",
+                    marginLeft: 10,
+                  }}
+                >
+                  ✖
+                </button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: 23 }}>
+                {warenkorb.length === 0 ? (
+                  <div style={{ color: "#a1a1aa", padding: 12, fontSize: 17 }}>
+                    Noch keine Produkte im Warenkorb.
+                  </div>
+                ) : (
+                  <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                    {warenkorb.map((item, idx) => {
+                      const p = produkte.find(
+                        (pr) => pr.id === item.produktId
+                      );
+                      return (
+                        <li
+                          key={idx}
+                          style={{
+                            fontSize: 17,
+                            marginBottom: 13,
+                            paddingBottom: 12,
+                            borderBottom: "1px solid #23262e",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 13,
+                          }}
+                        >
+                          <img
+                            src={images[p?.bildName] || images.defaultBild}
+                            alt={p?.name}
+                            style={{
+                              width: 38,
+                              height: 38,
+                              objectFit: "cover",
+                              borderRadius: 9,
+                              background: "#23262e",
+                              border: "1.5px solid #333",
+                              marginRight: 2,
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <b>{p?.name || "?"}</b>
+                            <div
+                              style={{
+                                fontSize: 13.5,
+                                color: "#a1a1aa",
+                                marginBottom: 1,
+                                fontWeight: 400,
+                              }}
+                            >
+                              {p?.beschreibung}
+                            </div>
+                            <div style={{ fontSize: 14 }}>
+                              <span style={{ color: "#a3e635", fontWeight: 800 }}>
+                                {p?.preis?.toFixed(2)} € x {item.menge}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => onRemoveFromCart(p.id)}
+                            style={{
+                              background: "#f87171",
+                              color: "#fff",
+                              border: 0,
+                              borderRadius: 7,
+                              padding: "7px 12px",
+                              fontWeight: 700,
+                              fontSize: 15,
+                              cursor: "pointer",
+                            }}
+                          >
+                            −
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+              {/* Checkout-Bereich */}
+              <div style={{
+                padding: "23px 23px 23px 23px",
+                borderTop: "1px solid #23262e",
+                background: "#18181b",
+              }}>
+                <div style={{
+                  fontWeight: 900,
+                  fontSize: 18,
+                  marginBottom: 9,
+                  color: "#a3e635",
+                }}>
+                  Gesamt: {gesamt.toFixed(2)} €
+                </div>
+                <button
+                  onClick={() => {
+                    this.handleCartClose();
+                    onCheckout();
+                  }}
+                  disabled={warenkorb.length === 0}
+                  style={{
+                    background: warenkorb.length === 0 ? "#444" : "#38bdf8",
+                    color: "#18181b",
+                    fontWeight: 900,
+                    borderRadius: 12,
+                    border: 0,
+                    padding: "14px 36px",
+                    fontSize: 18,
+                    cursor: warenkorb.length === 0 ? "not-allowed" : "pointer",
+                    boxShadow: warenkorb.length === 0 ? "" : "0 2px 12px #38bdf822",
+                    transition: "background 0.13s, transform 0.13s",
+                    marginTop: 3,
+                  }}
+                >
+                  ✅ Zur Kasse
+                </button>
+              </div>
             </div>
-          ) : (
-            <ul style={{ marginBottom: 12 }}>
-              {warenkorb.map((item, idx) => {
-                const p = this.props.produkte.find(
-                  (pr) => pr.id === item.produktId
-                );
-                return (
-                  <li key={idx} style={{ fontSize: 16.5, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 800 }}>{p?.name || "?"}</span> ×{" "}
-                    {item.menge} ={" "}
-                    <span style={{ fontWeight: 800 }}>
-                      {(p?.preis * item.menge).toFixed(2)} €
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <div
-            style={{
-              fontWeight: 900,
-              fontSize: 19,
-              marginTop: 8,
-              marginBottom: 7,
-              color: "#a3e635",
-            }}
-          >
-            Gesamt: {gesamt.toFixed(2)} €
-          </div>
-          <button
-            onClick={onCheckout}
-            disabled={warenkorb.length === 0}
-            style={{
-              background: warenkorb.length === 0 ? "#444" : "#38bdf8",
-              color: "#18181b",
-              fontWeight: 900,
-              borderRadius: 12,
-              border: 0,
-              padding: "14px 36px",
-              fontSize: 18,
-              marginTop: 11,
-              marginBottom: 4,
-              cursor: warenkorb.length === 0 ? "not-allowed" : "pointer",
-              boxShadow: warenkorb.length === 0 ? "" : "0 2px 12px #38bdf822",
-              transition: "background 0.13s, transform 0.13s",
-            }}
-          >
-            ✅ Zur Kasse
-          </button>
-        </div>
+          </>
+        )}
+
+        {/* FEHLER-ANZEIGE */}
         <div style={{ color: "#f87171", marginTop: 18, minHeight: 25 }}>
           {error}
         </div>
