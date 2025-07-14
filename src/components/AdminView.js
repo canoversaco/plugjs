@@ -225,13 +225,19 @@ export default class AdminView extends React.Component {
       this.setState({ error: "Bitte gültige Produktdaten angeben." });
       return;
     }
-    if (this.props.onProduktUpdate) {
-      await this.props.onProduktUpdate(produktEdit, {
-        ...produktForm,
-        preis: Number(produktForm.preis),
-        bestand: Number(produktForm.bestand),
-      });
-    }
+    if (!produktEdit) return; // Nur bearbeiten, wenn ein Produkt ausgewählt ist!
+try {
+  await updateDoc(doc(db, "produkte", produktEdit), {
+    ...produktForm,
+    preis: Number(produktForm.preis),
+    bestand: Number(produktForm.bestand),
+  });
+  // Nach Update: Produkte neu laden!
+  this.fetchProdukte();
+} catch (e) {
+  this.setState({ error: "Fehler beim Speichern des Produkts!" });
+  return;
+}
     this.setState({
       produktEdit: null,
       produktForm: {
@@ -1183,7 +1189,7 @@ export default class AdminView extends React.Component {
           )}
 
           {/* --- ALLE WEITEREN TABS: Produkte, Orders, Nutzer, Broadcast, Deposits --- */}
-          {tab === "produkte" && renderProdukteTab(this)}
+          {tab === "produkte" && renderProdukteTab({ ...this, props: { produkte: this.state.produkte } })}
           {tab === "orders" && renderOrdersTab(this, produkte, orders, onChat)}
           {tab === "users" && renderUsersTab(this, users)}
           {tab === "broadcast" && renderBroadcastTab(this)}
@@ -1460,7 +1466,7 @@ function anonymisiereName(name) {
   return name.slice(0, 2) + "***" + name.slice(-2);
 }
 
-function renderProdukteTab(ctx) {
+function Tab(ctx) {
   const {
     produkte = [],
     produktEdit,
