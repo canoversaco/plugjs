@@ -214,6 +214,205 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
     </div>
   );
 }
+
+// ===================== PRODUKTE-ÄNDERUNGSPANEL ===================
+function EditOrderPanel({ order, produkte, onSave, onCancel }) {
+  const [items, setItems] = useState(
+    (order.warenkorb || []).map((item) => ({
+      ...item,
+      removed: false,
+      changed: false,
+      note: "",
+    }))
+  );
+  const [extraNote, setExtraNote] = useState("");
+
+  // Handle Menge ändern oder entfernen
+  const handleChange = (idx, field, value) => {
+    setItems((old) =>
+      old.map((it, i) =>
+        i === idx
+          ? {
+              ...it,
+              [field]: value,
+              changed: field !== "note" ? true : it.changed,
+              removed: field === "removed" ? value : it.removed,
+            }
+          : it
+      )
+    );
+  };
+
+  // Save klick: Erzeuge neuen Warenkorb & Änderungsobjekt
+  const handleSave = () => {
+    const changedItems = items
+      .filter((it) => it.removed || it.changed)
+      .map((it) => ({
+        produktId: it.produktId,
+        oldMenge: order.warenkorb.find((oi) => oi.produktId === it.produktId)
+          ?.menge,
+        newMenge: it.removed ? 0 : it.menge,
+        note: it.note,
+        removed: it.removed,
+      }));
+    if (changedItems.length === 0 && !extraNote.trim()) {
+      alert("Keine Änderung vorgenommen.");
+      return;
+    }
+    // Erstelle neuen Warenkorb (ohne entfernte Produkte)
+    const newWarenkorb = items
+      .filter((it) => !it.removed)
+      .map((it) => ({
+        produktId: it.produktId,
+        menge: Number(it.menge),
+      }));
+    onSave({ newWarenkorb, changedItems, extraNote });
+  };
+
+  return (
+    <div
+      style={{
+        background: "#23262e",
+        borderRadius: 10,
+        padding: 18,
+        marginTop: 14,
+        marginBottom: 18,
+        color: "#fff",
+        boxShadow: "0 4px 32px #0009",
+        maxWidth: 430,
+      }}
+    >
+      <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 7 }}>
+        Produkte ändern/nicht verfügbar:
+      </div>
+      <ul style={{ paddingLeft: 0 }}>
+        {items.map((item, idx) => {
+          const p = produkte.find((pr) => pr.id === item.produktId);
+          return (
+            <li key={item.produktId} style={{ marginBottom: 15, listStyle: "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <img
+                  src={images[p?.bildName] || images.defaultBild}
+                  alt={p?.name}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    objectFit: "cover",
+                    borderRadius: 6,
+                  }}
+                />
+                <b style={{ minWidth: 80 }}>{p?.name || "?"}</b>
+                <span style={{ fontSize: 15, marginRight: 4 }}>Menge:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={item.menge}
+                  onChange={(e) =>
+                    handleChange(idx, "menge", Number(e.target.value))
+                  }
+                  disabled={item.removed}
+                  style={{
+                    width: 44,
+                    background: item.removed ? "#262626" : "#191a20",
+                    color: "#fff",
+                    borderRadius: 6,
+                    border: "1px solid #383838",
+                    fontSize: 15,
+                    marginRight: 8,
+                  }}
+                />
+                <button
+                  onClick={() => handleChange(idx, "removed", !item.removed)}
+                  style={{
+                    background: item.removed ? "#f87171" : "#23262e",
+                    color: "#fff",
+                    borderRadius: 7,
+                    border: "none",
+                    padding: "6px 12px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {item.removed ? "Wieder hinzufügen" : "Entfernen"}
+                </button>
+              </div>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Notiz (z.B. ausverkauft, nur halbe Menge)"
+                  value={item.note}
+                  onChange={(e) => handleChange(idx, "note", e.target.value)}
+                  disabled={!item.removed && !item.changed}
+                  style={{
+                    marginTop: 4,
+                    width: "100%",
+                    borderRadius: 7,
+                    border: "1px solid #333",
+                    padding: 6,
+                    background: "#191a20",
+                    color: "#fff",
+                    fontSize: 15,
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div style={{ marginTop: 13, marginBottom: 8 }}>
+        <textarea
+          placeholder="Zusätzliche Notiz für den Kunden (optional)..."
+          value={extraNote}
+          onChange={(e) => setExtraNote(e.target.value)}
+          style={{
+            width: "100%",
+            borderRadius: 8,
+            border: "1px solid #383838",
+            padding: 9,
+            background: "#18181b",
+            color: "#fff",
+            fontSize: 15,
+          }}
+          rows={2}
+        />
+      </div>
+      <button
+        onClick={handleSave}
+        style={{
+          background: "#a3e635",
+          color: "#18181b",
+          border: 0,
+          borderRadius: 8,
+          padding: "9px 26px",
+          fontWeight: 900,
+          fontSize: 16,
+          cursor: "pointer",
+        }}
+      >
+        Änderung senden
+      </button>
+      <button
+        onClick={onCancel}
+        style={{
+          marginLeft: 9,
+          background: "#23262e",
+          color: "#fff",
+          border: 0,
+          borderRadius: 8,
+          padding: "9px 22px",
+          fontWeight: 700,
+          fontSize: 15,
+          cursor: "pointer",
+        }}
+      >
+        Abbrechen
+      </button>
+    </div>
+  );
+}
+
+// ========== KURIER VIEW ===========
 export default function KurierView({
   user,
   orders = [],
@@ -225,6 +424,9 @@ export default function KurierView({
   const [statusEditId, setStatusEditId] = useState(null);
   const [treffpunktEdit, setTreffpunktEdit] = useState(null); // Order-ID die editiert wird
   const [loadingUpdate, setLoadingUpdate] = useState(false);
+
+  // NEU: Änderungspanel
+  const [orderEditId, setOrderEditId] = useState(null);
 
   // Status ändern
   const handleStatusChange = async (orderId, status) => {
@@ -245,6 +447,23 @@ export default function KurierView({
     if (window.confirm("Bestellung wirklich löschen?")) {
       await deleteDoc(doc(db, "orders", orderId));
     }
+  };
+
+  // Änderung speichern/an Kunde schicken
+  const handleSaveOrderEdit = async (orderId, { newWarenkorb, changedItems, extraNote }) => {
+    // Schicke Änderungsvorschlag an Kunde
+    await updateDoc(doc(db, "orders", orderId), {
+      changeRequest: {
+        from: user?.username || "Kurier",
+        text: extraNote || "",
+        status: "offen",
+        ts: Date.now(),
+        changedItems: changedItems,
+        newWarenkorb: newWarenkorb,
+      },
+    });
+    setOrderEditId(null);
+    alert("Änderungsvorschlag wurde an den Kunden gesendet!");
   };
 
   const offeneOrders = orders
@@ -501,6 +720,33 @@ export default function KurierView({
                     >
                       🗑️ Löschen
                     </button>
+                    <button
+                      onClick={() => setOrderEditId(order.id)}
+                      style={{
+                        background: "#fbbf24",
+                        color: "#18181b",
+                        border: 0,
+                        borderRadius: 7,
+                        fontWeight: 700,
+                        padding: "6px 12px",
+                        fontSize: 14,
+                        marginLeft: 7,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✏️ Produkte ändern
+                    </button>
+                    {/* Produkte-Änderungs-Panel */}
+                    {orderEditId === order.id && (
+                      <EditOrderPanel
+                        order={order}
+                        produkte={produkte}
+                        onSave={(changeObj) =>
+                          handleSaveOrderEdit(order.id, changeObj)
+                        }
+                        onCancel={() => setOrderEditId(null)}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -657,76 +903,42 @@ export default function KurierView({
                   </td>
                   <td style={{ padding: 8 }}>
                     <span
-  style={{
-    background: STATUS_COLORS[order.status] || "#23262e",
-    color: "#18181b",
-    borderRadius: 7,
-    fontWeight: 900,
-    padding: "3px 11px",
-    fontSize: 14,
-    cursor: "pointer",
-    display: "inline-block",
-  }}
-  onClick={() => setStatusEditId(order.id)}
->
-  {order.status}
-</span>
-{statusEditId === order.id && (
-  <div style={{ display: "inline-flex", alignItems: "center", marginLeft: 7 }}>
-    <select
-      autoFocus
-      value={order.status}
-      onBlur={() => setStatusEditId(null)}
-      onChange={async (e) => {
-        const newStatus = e.target.value;
-        // Wenn unterwegs gewählt, nach ETA fragen
-        if (newStatus === "unterwegs") {
-          const min = prompt("Ungefähre Ankunft in wie vielen Minuten? (z.B. 10)");
-          const eta = parseInt(min, 10);
-          if (!isNaN(eta) && eta > 0) {
-            await updateDoc(doc(db, "orders", order.id), {
-              status: newStatus,
-              eta: Date.now() + eta * 60000,
-            });
-          } else {
-            // nur Status ohne ETA setzen
-            await handleStatusChange(order.id, newStatus);
-          }
-        } else {
-          await updateDoc(doc(db, "orders", order.id), {
-            status: newStatus,
-            eta: null,
-          });
-        }
-        setStatusEditId(null);
-      }}
-      style={{
-        borderRadius: 7,
-        padding: 4,
-        fontWeight: 700,
-        fontSize: 15,
-      }}
-    >
-      {STATUS_OPTIONS.map((s) => (
-        <option key={s} value={s}>
-          {s}
-        </option>
-      ))}
-    </select>
-    {/* ETA anzeigen, falls unterwegs */}
-    {order.status === "unterwegs" && order.eta && (
-      <span style={{
-        marginLeft: 6,
-        color: "#a3e635",
-        fontWeight: 700,
-        fontSize: 15
-      }}>
-        ETA: {Math.max(1, Math.round((order.eta - Date.now()) / 60000))} Min.
-      </span>
-    )}
-  </div>
-)}
-
+                      style={{
+                        background: STATUS_COLORS[order.status] || "#23262e",
+                        color: "#18181b",
+                        borderRadius: 7,
+                        fontWeight: 900,
+                        padding: "3px 11px",
+                        fontSize: 14,
+                        cursor: "pointer",
+                        display: "inline-block",
+                      }}
+                      onClick={() => setStatusEditId(order.id)}
+                    >
+                      {order.status}
+                    </span>
+                    {statusEditId === order.id && (
+                      <select
+                        autoFocus
+                        value={order.status}
+                        onBlur={() => setStatusEditId(null)}
+                        onChange={(e) =>
+                          handleStatusChange(order.id, e.target.value)
+                        }
+                        style={{
+                          marginLeft: 7,
+                          borderRadius: 7,
+                          padding: 4,
+                          fontWeight: 700,
+                          fontSize: 15,
+                        }}
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
                     )}
                   </td>
                   <td style={{ padding: 8 }}>
