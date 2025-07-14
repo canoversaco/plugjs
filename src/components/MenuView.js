@@ -26,15 +26,29 @@ export default class MenuView extends React.Component {
       error: "",
       imgActive: "",
       cartOpen: false,
+      suche: "",
     };
   }
 
   filterProdukte = () => {
     const { produkte } = this.props;
-    const { selectedKat } = this.state;
-    return produkte
-      .filter((p) => (p.kategorie || "Standard") === selectedKat)
-      .sort((a, b) => (a.preis || 0) - (b.preis || 0));
+    const { selectedKat, suche } = this.state;
+    // Erst nach Kategorie filtern (falls "Alle" zeigen, falls du das willst)
+    let res = produkte;
+    if (selectedKat !== "ALLE") {
+      res = res.filter((p) => (p.kategorie || "Standard") === selectedKat);
+    }
+    // Dann nach Suchbegriff (name, beschreibung)
+    if (suche.trim()) {
+      const s = suche.trim().toLowerCase();
+      res = res.filter(
+        (p) =>
+          (p.name && p.name.toLowerCase().includes(s)) ||
+          (p.beschreibung && p.beschreibung.toLowerCase().includes(s))
+      );
+    }
+    // Nach Preis sortieren
+    return res.sort((a, b) => (a.preis || 0) - (b.preis || 0));
   };
 
   handleMengeChange = (produktId, val) => {
@@ -60,7 +74,7 @@ export default class MenuView extends React.Component {
       onGoBack,
       produkte = [],
     } = this.props;
-    const { kategorien, selectedKat, menge, error, imgActive, cartOpen } = this.state;
+    const { kategorien, selectedKat, menge, error, imgActive, cartOpen, suche } = this.state;
 
     const cartMenge = (produktId) =>
       warenkorb.find((w) => w.produktId === produktId)?.menge || 0;
@@ -159,6 +173,30 @@ export default class MenuView extends React.Component {
             from { transform: translateX(120px); opacity: 0; }
             to { transform: none; opacity: 1; }
           }
+          .search-input {
+            background: #23262e;
+            border: none;
+            border-radius: 9px;
+            padding: 12px 17px 12px 40px;
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            width: 100%;
+            box-shadow: 0 2px 12px #38bdf81a;
+            transition: box-shadow 0.15s;
+            outline: none;
+          }
+          .search-input:focus {
+            box-shadow: 0 4px 18px #38bdf844;
+          }
+          .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 12px;
+            font-size: 21px;
+            color: #38bdf8;
+            pointer-events: none;
+          }
           @media (max-width: 550px) {
             .cart-drawer { width: 99vw; }
             .menu-cart-fab { right: 7px; bottom: 12px; min-width: 70px; }
@@ -213,45 +251,74 @@ export default class MenuView extends React.Component {
           </h2>
         </div>
 
-        {/* Kategorie-Auswahl */}
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            marginBottom: 26,
-            flexWrap: "wrap",
-          }}
-        >
-          {kategorien.map((kat) => (
+        {/* SUCHFELD + Kategorie-Auswahl */}
+        <div style={{ display: "flex", gap: 18, marginBottom: 25, flexWrap: "wrap" }}>
+          <div style={{ flex: "2 1 320px", position: "relative" }}>
+            <span className="search-icon">🔍</span>
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Produkt suchen …"
+              value={suche}
+              onChange={e => this.setState({ suche: e.target.value })}
+              maxLength={64}
+              autoFocus
+            />
+          </div>
+          <div style={{ display: "flex", gap: 12, flex: "1 1 160px", minWidth: 160, overflowX: "auto" }}>
             <button
-              key={kat.name}
-              className={
-                "menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")
-              }
-              onClick={() => this.setState({ selectedKat: kat.name })}
+              className={"menu-kat-btn" + (selectedKat === "ALLE" ? " selected" : "")}
+              onClick={() => this.setState({ selectedKat: "ALLE" })}
               style={{
-                background: selectedKat === kat.name ? "#38bdf8" : "#23262e",
-                color: selectedKat === kat.name ? "#18181b" : "#fff",
+                background: selectedKat === "ALLE" ? "#38bdf8" : "#23262e",
+                color: selectedKat === "ALLE" ? "#18181b" : "#fff",
                 border: 0,
                 borderRadius: 12,
-                padding: "9px 25px",
+                padding: "9px 21px",
                 fontWeight: 800,
-                fontSize: 17,
+                fontSize: 16,
                 cursor: "pointer",
-                minWidth: 70,
-                letterSpacing: 0.15,
+                minWidth: 55,
+                letterSpacing: 0.13,
                 display: "flex",
                 alignItems: "center",
-                gap: 9,
+                gap: 8,
                 fontFamily: "inherit",
               }}
             >
-              <span style={{ fontSize: 21 }}>
-                {KAT_EMOJIS[kat.name] || "🛍️"}
-              </span>
-              {kat.name}
+              <span style={{ fontSize: 21 }}>🌐</span> Alle
             </button>
-          ))}
+            {kategorien.map((kat) => (
+              <button
+                key={kat.name}
+                className={
+                  "menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")
+                }
+                onClick={() => this.setState({ selectedKat: kat.name })}
+                style={{
+                  background: selectedKat === kat.name ? "#38bdf8" : "#23262e",
+                  color: selectedKat === kat.name ? "#18181b" : "#fff",
+                  border: 0,
+                  borderRadius: 12,
+                  padding: "9px 21px",
+                  fontWeight: 800,
+                  fontSize: 16,
+                  cursor: "pointer",
+                  minWidth: 55,
+                  letterSpacing: 0.13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontFamily: "inherit",
+                }}
+              >
+                <span style={{ fontSize: 21 }}>
+                  {KAT_EMOJIS[kat.name] || "🛍️"}
+                </span>
+                {kat.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Produktliste */}
@@ -276,7 +343,7 @@ export default class MenuView extends React.Component {
                 borderRadius: 14,
               }}
             >
-              😕 Keine Produkte in dieser Kategorie.
+              😕 Keine Produkte gefunden.
             </div>
           ) : (
             this.filterProdukte().map((p) => (
