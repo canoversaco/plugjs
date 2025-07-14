@@ -1196,7 +1196,8 @@ handleAddProdukt = async () => {
           )}
 
           {/* --- ALLE WEITEREN TABS: Produkte, Orders, Nutzer, Broadcast, Deposits --- */}
-          {tab === "produkte" && renderProdukteTab({ ...this, props: { produkte: this.state.produkte } })}
+          {tab === "produkte" && Tab(this)}
+
           {tab === "orders" && renderOrdersTab(this, produkte, orders, onChat)}
           {tab === "users" && renderUsersTab(this, users)}
           {tab === "broadcast" && renderBroadcastTab(this)}
