@@ -21,24 +21,23 @@ export default class MenuView extends React.Component {
 
     this.state = {
       kategorien,
-      selectedKat: kategorien[0]?.name || "",
+      selectedKat: "ALLE",
       menge: {},
       error: "",
       imgActive: "",
       cartOpen: false,
       suche: "",
+      searchFocused: false,
     };
   }
 
   filterProdukte = () => {
     const { produkte } = this.props;
     const { selectedKat, suche } = this.state;
-    // Erst nach Kategorie filtern (falls "Alle" zeigen, falls du das willst)
     let res = produkte;
     if (selectedKat !== "ALLE") {
       res = res.filter((p) => (p.kategorie || "Standard") === selectedKat);
     }
-    // Dann nach Suchbegriff (name, beschreibung)
     if (suche.trim()) {
       const s = suche.trim().toLowerCase();
       res = res.filter(
@@ -47,7 +46,6 @@ export default class MenuView extends React.Component {
           (p.beschreibung && p.beschreibung.toLowerCase().includes(s))
       );
     }
-    // Nach Preis sortieren
     return res.sort((a, b) => (a.preis || 0) - (b.preis || 0));
   };
 
@@ -65,6 +63,8 @@ export default class MenuView extends React.Component {
   handleCartOpen = () => this.setState({ cartOpen: true });
   handleCartClose = () => this.setState({ cartOpen: false });
 
+  clearSuche = () => this.setState({ suche: "" });
+
   render() {
     const {
       warenkorb = [],
@@ -74,7 +74,16 @@ export default class MenuView extends React.Component {
       onGoBack,
       produkte = [],
     } = this.props;
-    const { kategorien, selectedKat, menge, error, imgActive, cartOpen, suche } = this.state;
+    const {
+      kategorien,
+      selectedKat,
+      menge,
+      error,
+      imgActive,
+      cartOpen,
+      suche,
+      searchFocused,
+    } = this.state;
 
     const cartMenge = (produktId) =>
       warenkorb.find((w) => w.produktId === produktId)?.menge || 0;
@@ -88,67 +97,150 @@ export default class MenuView extends React.Component {
       <div
         style={{
           minHeight: "100vh",
-          background: "linear-gradient(130deg, #161718 60%, #1a222f 100%)",
+          background: "linear-gradient(130deg, #191c22 60%, #1a2330 100%)",
           color: "#fff",
           fontFamily: "'Inter', sans-serif",
-          padding: 30,
+          padding: "18px 7vw 42px 7vw",
         }}
       >
         <style>{`
-          .menu-kat-btn {
-            transition: background 0.18s, color 0.14s, transform 0.13s;
-            box-shadow: 0 2px 8px #00000020;
+          .menu-kat-bar {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            justify-content: flex-start;
+            position: relative;
           }
-          .menu-kat-btn.selected, .menu-kat-btn:active {
-            background: #38bdf8 !important;
+          .menu-kat-btn {
+            background: #22242b;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 7px 20px;
+            font-size: 15.3px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.17s, color 0.12s, transform 0.13s;
+            box-shadow: 0 2px 10px #23262e18;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.02em;
+            outline: none;
+            opacity: 0.94;
+          }
+          .menu-kat-btn.selected {
+            background: linear-gradient(93deg, #38bdf8 64%, #a3e635 125%);
             color: #18181b !important;
-            transform: scale(1.06);
-            box-shadow: 0 4px 24px #38bdf855;
+            transform: scale(1.07);
+            opacity: 1;
+          }
+          .search-wrap {
+            position: relative;
+            margin-left: auto;
+            min-width: 220px;
+            flex: 1 1 230px;
+            max-width: 270px;
+            display: flex;
+            align-items: center;
+            background: #1c1e25;
+            border-radius: 9px;
+            box-shadow: 0 2px 10px #38bdf820;
+            margin-right: 7px;
+            height: 40px;
+          }
+          .search-input {
+            background: transparent;
+            border: none;
+            border-radius: 9px;
+            padding: 8px 35px 8px 36px;
+            font-size: 16px;
+            color: #fff;
+            width: 100%;
+            font-weight: 600;
+            outline: none;
+            transition: background 0.14s, box-shadow 0.14s;
+            letter-spacing: 0.01em;
+          }
+          .search-input:focus {
+            background: #21222b;
+          }
+          .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            font-size: 18.5px;
+            color: #38bdf8;
+            opacity: 0.89;
+          }
+          .search-clear-btn {
+            position: absolute;
+            right: 7px;
+            top: 8px;
+            background: none;
+            border: none;
+            color: #f87171;
+            font-size: 19px;
+            cursor: pointer;
+            border-radius: 20px;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.74;
+            transition: opacity 0.14s, background 0.14s;
+          }
+          .search-clear-btn:hover {
+            background: #23262e;
+            opacity: 1;
           }
           .menu-prod-img {
             transition: transform 0.16s cubic-bezier(.41,.8,.59,1.21), box-shadow 0.18s;
             cursor: pointer;
           }
           .menu-prod-img:hover {
-            transform: scale(1.09);
-            box-shadow: 0 3px 16px #38bdf850;
+            transform: scale(1.07);
+            box-shadow: 0 3px 15px #38bdf850;
           }
           .menu-prod-img.active {
-            transform: scale(1.18) !important;
-            box-shadow: 0 5px 25px #a3e63580;
+            transform: scale(1.14) !important;
+            box-shadow: 0 5px 21px #a3e63580;
           }
           .menu-cart-fab {
             position: fixed;
             right: 24px;
-            bottom: 32px;
+            bottom: 28px;
             z-index: 120;
-            background: linear-gradient(100deg, #a3e635 72%, #38bdf8 128%);
+            background: linear-gradient(100deg, #a3e635 69%, #38bdf8 128%);
             color: #18181b;
             border: none;
             border-radius: 100px;
-            box-shadow: 0 2px 22px #a3e63544;
-            padding: 0 25px 0 21px;
+            box-shadow: 0 3px 24px #a3e63555;
+            padding: 0 22px 0 17px;
             font-weight: 900;
-            font-size: 22px;
-            min-width: 90px;
-            min-height: 66px;
+            font-size: 21px;
+            min-width: 85px;
+            min-height: 61px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             cursor: pointer;
             transition: box-shadow 0.17s, background 0.18s;
             outline: none;
           }
           .menu-cart-fab:hover {
             box-shadow: 0 4px 30px #38bdf877;
-            background: linear-gradient(90deg, #38bdf8 75%, #a3e635 120%);
+            background: linear-gradient(95deg, #38bdf8 77%, #a3e635 120%);
           }
           .cart-drawer-bg {
             position: fixed;
             inset: 0;
-            background: rgba(24,24,27, 0.73);
+            background: rgba(24,24,27, 0.74);
             z-index: 199;
-            animation: fadeinbg .18s;
+            animation: fadeinbg .16s;
           }
           .cart-drawer {
             position: fixed;
@@ -163,7 +255,7 @@ export default class MenuView extends React.Component {
             padding: 0;
             display: flex;
             flex-direction: column;
-            animation: slideinright .21s cubic-bezier(.31,1.04,.59,.98);
+            animation: slideinright .20s cubic-bezier(.31,1.04,.59,.98);
           }
           @keyframes fadeinbg {
             from { opacity: 0; }
@@ -173,33 +265,11 @@ export default class MenuView extends React.Component {
             from { transform: translateX(120px); opacity: 0; }
             to { transform: none; opacity: 1; }
           }
-          .search-input {
-            background: #23262e;
-            border: none;
-            border-radius: 9px;
-            padding: 12px 17px 12px 40px;
-            font-size: 17px;
-            font-weight: 700;
-            color: #fff;
-            width: 100%;
-            box-shadow: 0 2px 12px #38bdf81a;
-            transition: box-shadow 0.15s;
-            outline: none;
-          }
-          .search-input:focus {
-            box-shadow: 0 4px 18px #38bdf844;
-          }
-          .search-icon {
-            position: absolute;
-            left: 15px;
-            top: 12px;
-            font-size: 21px;
-            color: #38bdf8;
-            pointer-events: none;
-          }
-          @media (max-width: 550px) {
-            .cart-drawer { width: 99vw; }
-            .menu-cart-fab { right: 7px; bottom: 12px; min-width: 70px; }
+          @media (max-width: 600px) {
+            .cart-drawer { width: 98vw; }
+            .menu-cart-fab { right: 6px; bottom: 10px; min-width: 70px; }
+            .menu-kat-bar { gap: 9px; }
+            .search-wrap { min-width: 120px; }
           }
         `}</style>
 
@@ -208,19 +278,19 @@ export default class MenuView extends React.Component {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 20,
-            marginBottom: 22,
+            gap: 19,
+            marginBottom: 12,
           }}
         >
           <button
             onClick={onGoBack}
             style={{
-              background: "#23262e",
+              background: "#22242b",
               color: "#fff",
               borderRadius: 9,
               border: 0,
-              padding: "10px 23px",
-              fontSize: 16.5,
+              padding: "8px 19px",
+              fontSize: 15.5,
               fontWeight: 800,
               cursor: "pointer",
               marginRight: 7,
@@ -231,93 +301,72 @@ export default class MenuView extends React.Component {
           </button>
           <h2
             style={{
-              fontSize: 29,
+              fontSize: 25,
               fontWeight: 900,
               margin: 0,
-              letterSpacing: 0.2,
+              letterSpacing: 0.13,
             }}
           >
-            🛍️ Menü{" "}
+            🛍️ Produkte{" "}
             <span
               style={{
                 fontWeight: 400,
-                fontSize: 19,
+                fontSize: 15,
                 color: "#38bdf8",
-                marginLeft: 10,
+                marginLeft: 7,
+                letterSpacing: 0,
               }}
             >
-              [Auswahl]
+              [Bestellen]
             </span>
           </h2>
         </div>
 
-        {/* SUCHFELD + Kategorie-Auswahl */}
-        <div style={{ display: "flex", gap: 18, marginBottom: 25, flexWrap: "wrap" }}>
-          <div style={{ flex: "2 1 320px", position: "relative" }}>
+        {/* Kategorie + Suche */}
+        <div className="menu-kat-bar">
+          <button
+            className={"menu-kat-btn" + (selectedKat === "ALLE" ? " selected" : "")}
+            onClick={() => this.setState({ selectedKat: "ALLE" })}
+          >
+            <span style={{ fontSize: 18 }}>🌐</span> Alle
+          </button>
+          {kategorien.map((kat) => (
+            <button
+              key={kat.name}
+              className={"menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")}
+              onClick={() => this.setState({ selectedKat: kat.name })}
+            >
+              <span style={{ fontSize: 18 }}>{KAT_EMOJIS[kat.name] || "🛍️"}</span>
+              {kat.name}
+            </button>
+          ))}
+          <div className="search-wrap" style={{ marginLeft: "auto" }}>
             <span className="search-icon">🔍</span>
             <input
               className="search-input"
               type="text"
-              placeholder="Produkt suchen …"
+              placeholder="Suchen…"
               value={suche}
               onChange={e => this.setState({ suche: e.target.value })}
-              maxLength={64}
-              autoFocus
-            />
-          </div>
-          <div style={{ display: "flex", gap: 12, flex: "1 1 160px", minWidth: 160, overflowX: "auto" }}>
-            <button
-              className={"menu-kat-btn" + (selectedKat === "ALLE" ? " selected" : "")}
-              onClick={() => this.setState({ selectedKat: "ALLE" })}
+              maxLength={44}
+              onFocus={() => this.setState({ searchFocused: true })}
+              onBlur={() => this.setState({ searchFocused: false })}
               style={{
-                background: selectedKat === "ALLE" ? "#38bdf8" : "#23262e",
-                color: selectedKat === "ALLE" ? "#18181b" : "#fff",
-                border: 0,
-                borderRadius: 12,
-                padding: "9px 21px",
-                fontWeight: 800,
-                fontSize: 16,
-                cursor: "pointer",
-                minWidth: 55,
-                letterSpacing: 0.13,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontFamily: "inherit",
+                background: searchFocused ? "#22242b" : "transparent",
+                boxShadow: searchFocused ? "0 2px 15px #38bdf822" : undefined,
               }}
-            >
-              <span style={{ fontSize: 21 }}>🌐</span> Alle
-            </button>
-            {kategorien.map((kat) => (
+            />
+            {suche && (
               <button
-                key={kat.name}
-                className={
-                  "menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")
-                }
-                onClick={() => this.setState({ selectedKat: kat.name })}
-                style={{
-                  background: selectedKat === kat.name ? "#38bdf8" : "#23262e",
-                  color: selectedKat === kat.name ? "#18181b" : "#fff",
-                  border: 0,
-                  borderRadius: 12,
-                  padding: "9px 21px",
-                  fontWeight: 800,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  minWidth: 55,
-                  letterSpacing: 0.13,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontFamily: "inherit",
-                }}
+                className="search-clear-btn"
+                tabIndex={0}
+                onClick={this.clearSuche}
+                aria-label="Suchfeld leeren"
+                title="Suchfeld leeren"
               >
-                <span style={{ fontSize: 21 }}>
-                  {KAT_EMOJIS[kat.name] || "🛍️"}
-                </span>
-                {kat.name}
+                ×
               </button>
-            ))}
+            )}
           </div>
         </div>
 
@@ -325,8 +374,8 @@ export default class MenuView extends React.Component {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-            gap: 26,
+            gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))",
+            gap: 23,
             marginBottom: 28,
           }}
         >
@@ -335,12 +384,12 @@ export default class MenuView extends React.Component {
               style={{
                 color: "#a1a1aa",
                 gridColumn: "1/-1",
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: 500,
-                padding: 24,
+                padding: 21,
                 textAlign: "center",
                 background: "#23262e",
-                borderRadius: 14,
+                borderRadius: 13,
               }}
             >
               😕 Keine Produkte gefunden.
@@ -351,14 +400,14 @@ export default class MenuView extends React.Component {
                 key={p.id}
                 style={{
                   background: "#23262e",
-                  borderRadius: 18,
-                  padding: 22,
+                  borderRadius: 16,
+                  padding: 18,
                   display: "flex",
                   flexDirection: "row",
                   alignItems: "center",
-                  boxShadow: "0 2px 14px #00000018",
-                  gap: 20,
-                  minHeight: 112,
+                  boxShadow: "0 2px 12px #00000013",
+                  gap: 15,
+                  minHeight: 98,
                 }}
               >
                 <img
@@ -368,11 +417,11 @@ export default class MenuView extends React.Component {
                     "menu-prod-img" + (imgActive === p.id ? " active" : "")
                   }
                   style={{
-                    width: 80,
-                    height: 80,
+                    width: 72,
+                    height: 72,
                     objectFit: "cover",
-                    borderRadius: 16,
-                    border: "2.3px solid #18181b",
+                    borderRadius: 15,
+                    border: "2px solid #18181b",
                     background: "#18181b",
                   }}
                   onMouseDown={() => this.handleImgClick(p.id)}
@@ -384,15 +433,16 @@ export default class MenuView extends React.Component {
                   <div
                     style={{
                       fontWeight: 900,
-                      fontSize: 22,
-                      marginBottom: 2,
-                      letterSpacing: 0.03,
+                      fontSize: 19,
+                      marginBottom: 1,
+                      letterSpacing: 0.01,
+                      color: "#fff",
                     }}
                   >
                     {p.name}{" "}
                     <span
                       style={{
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: 500,
                         color: "#38bdf8",
                       }}
@@ -402,27 +452,28 @@ export default class MenuView extends React.Component {
                   </div>
                   <div
                     style={{
-                      fontSize: 15.5,
+                      fontSize: 14.3,
                       color: "#a1a1aa",
-                      marginBottom: 5,
-                      minHeight: 19,
-                      letterSpacing: 0.02,
+                      marginBottom: 4,
+                      minHeight: 18,
+                      letterSpacing: 0.01,
+                      fontWeight: 500,
                     }}
                   >
                     {p.beschreibung}
                   </div>
                   <div
-                    style={{ fontSize: 16.5, marginBottom: 4, fontWeight: 700 }}
+                    style={{ fontSize: 15.5, marginBottom: 2, fontWeight: 700 }}
                   >
                     <span style={{ color: "#a3e635" }}>{p.preis} €/g</span>
                     <span
-                      style={{ color: "#bbb", fontWeight: 500, marginLeft: 9 }}
+                      style={{ color: "#bbb", fontWeight: 500, marginLeft: 7 }}
                     >
                       | Bestand: {p.bestand}
                     </span>
                   </div>
                   <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                    style={{ display: "flex", gap: 6, alignItems: "center" }}
                   >
                     <input
                       type="number"
@@ -432,14 +483,14 @@ export default class MenuView extends React.Component {
                         this.handleMengeChange(p.id, e.target.value)
                       }
                       style={{
-                        width: 46,
+                        width: 38,
                         background: "#18181b",
                         color: "#fff",
                         border: "1px solid #333",
-                        borderRadius: 7,
-                        padding: "7px 6px",
+                        borderRadius: 6,
+                        padding: "5px 6px",
                         fontWeight: 700,
-                        fontSize: 15,
+                        fontSize: 14,
                         marginRight: 2,
                       }}
                     />
@@ -454,16 +505,17 @@ export default class MenuView extends React.Component {
                         background: "#a3e635",
                         color: "#18181b",
                         fontWeight: 900,
-                        borderRadius: 9,
+                        borderRadius: 8,
                         border: 0,
-                        padding: "9px 18px",
-                        fontSize: 16,
+                        padding: "8px 13px",
+                        fontSize: 15,
                         cursor: p.bestand === 0 ? "not-allowed" : "pointer",
                         opacity: p.bestand === 0 ? 0.5 : 1,
-                        marginRight: 4,
+                        marginRight: 2,
+                        boxShadow: "0 2px 8px #a3e63524",
                       }}
                     >
-                      ➕ Hinzufügen
+                      ➕
                     </button>
                     {cartMenge(p.id) > 0 && (
                       <button
@@ -473,15 +525,16 @@ export default class MenuView extends React.Component {
                           background: "#f87171",
                           color: "#fff",
                           border: 0,
-                          borderRadius: 9,
-                          padding: "8px 13px",
+                          borderRadius: 8,
+                          padding: "7px 11px",
                           fontWeight: 700,
-                          fontSize: 15,
+                          fontSize: 14,
                           cursor: "pointer",
-                          marginLeft: 1,
+                          marginLeft: 0,
+                          boxShadow: "0 1px 7px #f8717122",
                         }}
                       >
-                        − Entfernen
+                        −
                       </button>
                     )}
                   </div>
@@ -498,7 +551,7 @@ export default class MenuView extends React.Component {
           aria-label="Warenkorb öffnen"
         >
           🛒
-          <span style={{ marginLeft: 1, color: "#18181b", fontWeight: 900 }}>
+          <span style={{ marginLeft: 0, color: "#18181b", fontWeight: 900 }}>
             {warenkorb.length}
           </span>
           <span style={{ color: "#23262e", fontSize: 15, fontWeight: 700, marginLeft: 7 }}>
@@ -517,9 +570,9 @@ export default class MenuView extends React.Component {
                 justifyContent: "space-between",
                 borderBottom: "1px solid #23262e",
                 padding: "23px 23px 12px 23px",
-                minHeight: 70,
+                minHeight: 66,
               }}>
-                <h3 style={{ fontWeight: 900, fontSize: 21, margin: 0 }}>
+                <h3 style={{ fontWeight: 900, fontSize: 19.5, margin: 0 }}>
                   🛒 Dein Warenkorb
                 </h3>
                 <button
@@ -527,21 +580,21 @@ export default class MenuView extends React.Component {
                   style={{
                     background: "#23262e",
                     color: "#fff",
-                    borderRadius: 8,
+                    borderRadius: 7,
                     border: 0,
-                    fontSize: 20,
+                    fontSize: 19,
                     fontWeight: 800,
-                    padding: "6px 16px",
+                    padding: "5px 14px",
                     cursor: "pointer",
-                    marginLeft: 10,
+                    marginLeft: 7,
                   }}
                 >
                   ✖
                 </button>
               </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: 23 }}>
+              <div style={{ flex: 1, overflowY: "auto", padding: 19 }}>
                 {warenkorb.length === 0 ? (
-                  <div style={{ color: "#a1a1aa", padding: 12, fontSize: 17 }}>
+                  <div style={{ color: "#a1a1aa", padding: 10, fontSize: 16.2 }}>
                     Noch keine Produkte im Warenkorb.
                   </div>
                 ) : (
@@ -554,25 +607,25 @@ export default class MenuView extends React.Component {
                         <li
                           key={idx}
                           style={{
-                            fontSize: 17,
-                            marginBottom: 13,
-                            paddingBottom: 12,
+                            fontSize: 15.5,
+                            marginBottom: 11,
+                            paddingBottom: 10,
                             borderBottom: "1px solid #23262e",
                             display: "flex",
                             alignItems: "center",
-                            gap: 13,
+                            gap: 10,
                           }}
                         >
                           <img
                             src={images[p?.bildName] || images.defaultBild}
                             alt={p?.name}
                             style={{
-                              width: 38,
-                              height: 38,
+                              width: 33,
+                              height: 33,
                               objectFit: "cover",
-                              borderRadius: 9,
+                              borderRadius: 8,
                               background: "#23262e",
-                              border: "1.5px solid #333",
+                              border: "1.3px solid #333",
                               marginRight: 2,
                             }}
                           />
@@ -580,7 +633,7 @@ export default class MenuView extends React.Component {
                             <b>{p?.name || "?"}</b>
                             <div
                               style={{
-                                fontSize: 13.5,
+                                fontSize: 12.5,
                                 color: "#a1a1aa",
                                 marginBottom: 1,
                                 fontWeight: 400,
@@ -588,7 +641,7 @@ export default class MenuView extends React.Component {
                             >
                               {p?.beschreibung}
                             </div>
-                            <div style={{ fontSize: 14 }}>
+                            <div style={{ fontSize: 13.3 }}>
                               <span style={{ color: "#a3e635", fontWeight: 800 }}>
                                 {p?.preis?.toFixed(2)} € x {item.menge}
                               </span>
@@ -601,9 +654,9 @@ export default class MenuView extends React.Component {
                               color: "#fff",
                               border: 0,
                               borderRadius: 7,
-                              padding: "7px 12px",
+                              padding: "6px 10px",
                               fontWeight: 700,
-                              fontSize: 15,
+                              fontSize: 14,
                               cursor: "pointer",
                             }}
                           >
@@ -617,14 +670,14 @@ export default class MenuView extends React.Component {
               </div>
               {/* Checkout-Bereich */}
               <div style={{
-                padding: "23px 23px 23px 23px",
+                padding: "19px 22px 19px 22px",
                 borderTop: "1px solid #23262e",
                 background: "#18181b",
               }}>
                 <div style={{
                   fontWeight: 900,
-                  fontSize: 18,
-                  marginBottom: 9,
+                  fontSize: 16.5,
+                  marginBottom: 7,
                   color: "#a3e635",
                 }}>
                   Gesamt: {gesamt.toFixed(2)} €
@@ -639,14 +692,14 @@ export default class MenuView extends React.Component {
                     background: warenkorb.length === 0 ? "#444" : "#38bdf8",
                     color: "#18181b",
                     fontWeight: 900,
-                    borderRadius: 12,
+                    borderRadius: 11,
                     border: 0,
-                    padding: "14px 36px",
-                    fontSize: 18,
+                    padding: "12px 28px",
+                    fontSize: 16,
                     cursor: warenkorb.length === 0 ? "not-allowed" : "pointer",
                     boxShadow: warenkorb.length === 0 ? "" : "0 2px 12px #38bdf822",
                     transition: "background 0.13s, transform 0.13s",
-                    marginTop: 3,
+                    marginTop: 2,
                   }}
                 >
                   ✅ Zur Kasse
@@ -657,7 +710,7 @@ export default class MenuView extends React.Component {
         )}
 
         {/* FEHLER-ANZEIGE */}
-        <div style={{ color: "#f87171", marginTop: 18, minHeight: 25 }}>
+        <div style={{ color: "#f87171", marginTop: 13, minHeight: 19 }}>
           {error}
         </div>
       </div>
