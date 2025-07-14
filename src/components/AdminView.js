@@ -57,6 +57,7 @@ export default class AdminView extends React.Component {
       name: "",
       preis: "",
       bestand: "",
+      produkte: [],
       beschreibung: "",
       bildName: "defaultBild",
       kategorie: "",
@@ -98,9 +99,11 @@ export default class AdminView extends React.Component {
     selectedProduct: null,
   };
   componentDidMount() {
-    this.fetchBroadcasts();
-    this.setupMysteryBoxListener();
-  }
+  this.fetchBroadcasts();
+  this.setupMysteryBoxListener();
+  this.fetchProdukte(); // <-- HINZUGEFÜGT
+}
+
 
   componentWillUnmount() {
     if (this.unsubscribeBoxes) {
@@ -126,6 +129,15 @@ export default class AdminView extends React.Component {
     snap.forEach((docSnap) => {
       broadcasts.push({ id: docSnap.id, ...docSnap.data() });
     });
+    fetchProdukte = async () => {
+  const snap = await getDocs(collection(db, "produkte"));
+  const produkte = [];
+  snap.forEach((docSnap) => {
+    produkte.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  this.setState({ produkte });
+};
+
     this.setState({ broadcasts });
   }; // Broadcast-Handling
   handleSendBroadcast = async () => {
@@ -1171,7 +1183,7 @@ export default class AdminView extends React.Component {
           )}
 
           {/* --- ALLE WEITEREN TABS: Produkte, Orders, Nutzer, Broadcast, Deposits --- */}
-          {tab === "produkte" && renderProdukteTab(this)}
+          {tab === "produkte" && renderProdukteTab({ ...this, props: { produkte: this.state.produkte } })}
           {tab === "orders" && renderOrdersTab(this, produkte, orders, onChat)}
           {tab === "users" && renderUsersTab(this, users)}
           {tab === "broadcast" && renderBroadcastTab(this)}
