@@ -143,8 +143,6 @@ fetchBroadcasts = async () => {
 };
 
 
-    this.setState({ broadcasts });
-  }; // Broadcast-Handling
   handleSendBroadcast = async () => {
     const text = this.state.broadcastText.trim();
     if (!text) {
