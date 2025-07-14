@@ -1,41 +1,46 @@
 import React from "react";
+import { motion } from "framer-motion";
 
-export default function NotificationPopup({ message, onClose, actionText, onAction }) {
-  React.useEffect(() => {
-    const timer = setTimeout(() => onClose && onClose(), 9000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
+export default function NotificationPopup({ message, actionText, onAction, onClose }) {
   return (
-    <div style={{
-      position: "fixed",
-      bottom: 30,
-      right: 30,
-      background: "#23262e",
-      color: "#fff",
-      borderRadius: 16,
-      padding: "22px 28px 18px 24px",
-      boxShadow: "0 6px 40px #000c",
-      minWidth: 280,
-      maxWidth: 360,
-      zIndex: 99999,
-      border: "2.5px solid #a3e635"
-    }}>
-      <div style={{fontWeight: 900, fontSize: 18, marginBottom: 9}}>
-        🔔 Hinweis
-      </div>
-      <div style={{fontWeight: 600, fontSize: 16, marginBottom: 8}}>{message}</div>
+    <motion.div
+      initial={{ y: -60, opacity: 0, scale: 0.97 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      exit={{ y: -60, opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.32, type: "spring" }}
+      style={{
+        position: "fixed",
+        top: 19,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 9999,
+        background: "linear-gradient(93deg,#a3e635 60%,#38bdf8 100%)",
+        color: "#18181b",
+        borderRadius: 14,
+        fontWeight: 900,
+        fontSize: 16.5,
+        padding: "15px 32px 15px 19px",
+        boxShadow: "0 8px 32px #a3e63539, 0 2px 13px #38bdf844",
+        display: "flex",
+        alignItems: "center",
+        minWidth: 250,
+        maxWidth: 450,
+      }}
+    >
+      <span style={{ flex: 1 }}>{message}</span>
       {actionText && (
         <button
           style={{
-            background: "#a3e635",
-            color: "#23262e",
+            marginLeft: 19,
+            background: "#23262e",
+            color: "#fff",
             border: 0,
             borderRadius: 8,
             fontWeight: 800,
             fontSize: 15,
-            padding: "6px 22px",
-            marginRight: 10,
-            cursor: "pointer"
+            padding: "7px 16px",
+            cursor: "pointer",
+            transition: "background 0.16s",
           }}
           onClick={onAction}
         >
@@ -43,21 +48,21 @@ export default function NotificationPopup({ message, onClose, actionText, onActi
         </button>
       )}
       <button
-        onClick={onClose}
         style={{
-          background: "transparent",
-          color: "#fff",
-          border: 0,
-          fontWeight: 700,
-          fontSize: 14,
-          position: "absolute",
-          top: 10,
-          right: 16,
+          marginLeft: 13,
+          background: "none",
+          border: "none",
+          color: "#18181b",
+          fontSize: 23,
+          fontWeight: 800,
           cursor: "pointer",
+          opacity: 0.7,
         }}
+        onClick={onClose}
+        aria-label="Schließen"
       >
-        ✖
+        ×
       </button>
-    </div>
+    </motion.div>
   );
 }
