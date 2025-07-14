@@ -122,14 +122,8 @@ export default class AdminView extends React.Component {
     );
   };
 
-  fetchBroadcasts = async () => {
-    const q = query(collection(db, "broadcasts"), orderBy("created", "desc"));
-    const snap = await getDocs(q);
-    const broadcasts = [];
-    snap.forEach((docSnap) => {
-      broadcasts.push({ id: docSnap.id, ...docSnap.data() });
-    });
-    fetchProdukte = async () => {
+
+fetchProdukte = async () => {
   const snap = await getDocs(collection(db, "produkte"));
   const produkte = [];
   snap.forEach((docSnap) => {
@@ -137,6 +131,17 @@ export default class AdminView extends React.Component {
   });
   this.setState({ produkte });
 };
+
+fetchBroadcasts = async () => {
+  const q = query(collection(db, "broadcasts"), orderBy("created", "desc"));
+  const snap = await getDocs(q);
+  const broadcasts = [];
+  snap.forEach((docSnap) => {
+    broadcasts.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  this.setState({ broadcasts });
+};
+
 
     this.setState({ broadcasts });
   }; // Broadcast-Handling
@@ -258,23 +263,23 @@ try {
     }));
   };
 
-  handleAddProdukt = async () => {
-    const { produktAddForm } = this.state;
-    if (
-      !produktAddForm.name ||
-      produktAddForm.preis === "" ||
-      produktAddForm.preis <= 0
-    ) {
-      this.setState({ addError: "Produktname & Preis erforderlich." });
-      return;
-    }
-    if (this.props.onProduktAdd) {
-      await this.props.onProduktAdd({
-        ...produktAddForm,
-        preis: Number(produktAddForm.preis),
-        bestand: Number(produktAddForm.bestand),
-      });
-    }
+handleAddProdukt = async () => {
+  const { produktAddForm } = this.state;
+  if (
+    !produktAddForm.name ||
+    produktAddForm.preis === "" ||
+    produktAddForm.preis <= 0
+  ) {
+    this.setState({ addError: "Produktname & Preis erforderlich." });
+    return;
+  }
+  try {
+    await addDoc(collection(db, "produkte"), {
+      ...produktAddForm,
+      preis: Number(produktAddForm.preis),
+      bestand: Number(produktAddForm.bestand),
+    });
+    this.fetchProdukte();
     this.setState({
       produktAddForm: {
         name: "",
@@ -286,7 +291,11 @@ try {
       },
       addError: "",
     });
-  };
+  } catch (e) {
+    this.setState({ addError: "Fehler beim Hinzufügen des Produkts!" });
+  }
+};
+
 
   handleProduktDelete = async (produktId) => {
     if (window.confirm("Produkt wirklich löschen?")) {
