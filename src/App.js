@@ -36,6 +36,22 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("Error in component:", error, errorInfo);
   }
+
+findActiveEtaOrder() {
+  const { orders, user } = this.state;
+  if (!user) return null;
+  const meineAktiven = orders.filter(
+    (o) =>
+      o.kunde === user.username &&
+      o.status === "unterwegs" &&
+      o.eta && // Nur wenn ETA gesetzt!
+      o.eta > Date.now() // ETA ist noch nicht vorbei
+  );
+  // Wenn mehrere, die nächste nehmen
+  return meineAktiven.length ? meineAktiven[0] : null;
+}
+
+  
   render() {
     if (this.state.hasError) {
       return (
