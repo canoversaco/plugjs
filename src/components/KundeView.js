@@ -1,6 +1,6 @@
 import React from "react";
 import { updateDoc, doc } from "firebase/firestore";
-import { db } from "../firebase"; // Passe ggf. den Pfad an!
+import { db } from "../firebase";
 import images from "./images/images";
 
 export default class KundeView extends React.Component {
@@ -52,7 +52,6 @@ export default class KundeView extends React.Component {
       treffpunkt.length === 2 &&
       typeof treffpunkt[0] === "number" &&
       typeof treffpunkt[1] === "number" &&
-      // lat/lon dürfen nicht beide null/0 sein
       (treffpunkt[0] !== 0 || treffpunkt[1] !== 0)
     ) {
       // Link für Google Maps generieren
@@ -81,6 +80,12 @@ export default class KundeView extends React.Component {
         Noch nicht festgelegt
       </span>
     );
+  }
+
+  // Helfer für ETA Restzeit-Text (dynamisch, 1 Minute Minimum)
+  renderEta(etaTimestamp) {
+    const diff = Math.round((etaTimestamp - Date.now()) / 60000);
+    return diff > 1 ? diff : 1;
   }
 
   render() {
@@ -151,6 +156,29 @@ export default class KundeView extends React.Component {
                   {order.status || "?"}
                 </span>
               </div>
+
+              {/* ETA-Anzeige, falls unterwegs */}
+              {order.status === "unterwegs" &&
+                order.eta &&
+                order.eta > Date.now() && (
+                  <div
+                    style={{
+                      background: "linear-gradient(90deg,#a3e63555,#38bdf855)",
+                      color: "#0e820e",
+                      borderRadius: 9,
+                      padding: "7px 14px",
+                      fontWeight: 800,
+                      fontSize: 17,
+                      margin: "9px 0 12px 0",
+                      display: "inline-block",
+                      boxShadow: "0 2px 12px #38bdf822",
+                    }}
+                  >
+                    ⏳ ETA: Ankunft in ca.{" "}
+                    <b>{this.renderEta(order.eta)}</b> Minuten 🛵
+                  </div>
+                )}
+
               <div style={{ marginBottom: 6 }}>
                 Bestellt am:{" "}
                 {order.ts ? new Date(order.ts).toLocaleString() : "-"}
@@ -189,7 +217,9 @@ export default class KundeView extends React.Component {
               </div>
               <div style={{ marginTop: 7, marginBottom: 4 }}>
                 Notiz:{" "}
-                <span style={{ color: "#a1a1aa" }}>{order.notiz || "—"}</span>
+                <span style={{ color: "#a1a1aa" }}>
+                  {order.notiz || "—"}
+                </span>
               </div>
               <button
                 style={{
