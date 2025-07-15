@@ -318,10 +318,9 @@ handleAddProdukt = async () => {
   async handleSaveOrder(orderId) {
     const { orderForm } = this.state;
     try {
-      await updateDoc(doc(db, "orders", orderId), {
-        status: orderForm.status,
-        notiz: orderForm.notiz,
-      });
+      await this.props.onOrderStatusUpdate(orderId, orderForm.status, orderForm.notiz);
+// Optional: Notiz kannst du als drittes Argument übergeben!
+
       this.setState({ orderEdit: null });
     } catch (e) {
       alert("Fehler beim Speichern!");
