@@ -1,9 +1,11 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
+const cors = require("cors"); // <--- HINZUFÜGEN
 
 const TELEGRAM_TOKEN = "7459654349:AAE3UmBpba5o8eXMOFtbLeZwlRUOiGsl5z8";
 const app = express();
+app.use(cors()); // <--- HINZUFÜGEN
 app.use(bodyParser.json());
 
 // SICHERHEITSTIPP: Authentifiziere am besten per Secret im Header!
