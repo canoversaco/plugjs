@@ -1,8 +1,9 @@
 // save-telegram-id-server.js
 const express = require("express");
 const bodyParser = require("body-parser");
-const { initializeApp, cert, applicationDefault } = require("firebase-admin/app");
-const serviceAccount = require("./serviceAccountKey.json"); // <-- Pfad anpassen!
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
+const serviceAccount = require("./serviceAccountKey.json"); // Pfad ggf. anpassen!
 
 initializeApp({
   credential: cert(serviceAccount),
