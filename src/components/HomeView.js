@@ -12,7 +12,6 @@ import {
   Boxes,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import NotificationPopup from "./NotificationPopup"; // <--- Wichtig!
 
 // Hilfsfunktion für Restzeit
 function msToDHM(ms) {
@@ -152,10 +151,32 @@ export default function HomeView({
   onBuyCryptoClick,
   onGotoLotto,
   onGotoMysteryBoxen,
-  onGotoInventar,
+  onGotoInventar, // <-- WICHTIG: Wird vom App.js übergeben!
 }) {
   const [broadcasts, setBroadcasts] = useState(DEMO_BROADCASTS);
-  const [notification, setNotification] = useState(null);
+
+  // -- NEU: Notification für offene Bewertungen --
+  const [showRatingNotif, setShowRatingNotif] = useState(false);
+  const [unbewerteteOrder, setUnbewerteteOrder] = useState(null);
+
+  useEffect(() => {
+    // Prüfe auf offene, abgeschlossene aber unbewertete Bestellung(en)
+    if (orders && user?.username) {
+      const found = orders.find(
+        (o) =>
+          o.kunde === user.username &&
+          o.status === "abgeschlossen" &&
+          !o.rating
+      );
+      if (found) {
+        setUnbewerteteOrder(found);
+        setShowRatingNotif(true);
+      } else {
+        setShowRatingNotif(false);
+        setUnbewerteteOrder(null);
+      }
+    }
+  }, [orders, user]);
 
   const removeBroadcast = (id) =>
     setBroadcasts((prev) => prev.filter((b) => b.id !== id));
@@ -206,30 +227,6 @@ export default function HomeView({
     }
   };
 
-  // --- Notification für offene Bewertung ---
-  useEffect(() => {
-    if (
-      user &&
-      orders &&
-      orders.some(
-        (o) =>
-          o.kunde === user.username &&
-          o.status === "abgeschlossen" &&
-          !o.rating
-      )
-    ) {
-      setNotification({
-        message:
-          "Du hast eine abgeschlossene Bestellung, die du noch bewerten kannst! 🌟",
-        actionText: "Jetzt bewerten",
-        onAction: () => {
-          setNotification(null);
-          if (typeof onGotoOrders === "function") onGotoOrders();
-        },
-      });
-    }
-  }, [orders, user, onGotoOrders]);
-
   return (
     <div
       style={{
@@ -242,16 +239,6 @@ export default function HomeView({
         overflow: "auto",
       }}
     >
-      {/* Notification Popup */}
-      {notification && (
-        <NotificationPopup
-          message={notification.message}
-          actionText={notification.actionText}
-          onAction={notification.onAction}
-          onClose={() => setNotification(null)}
-        />
-      )}
-
       {/* Wallet oben rechts */}
       <div style={{ position: "fixed", right: 32, top: 32, zIndex: 80 }}>
         <button
@@ -293,7 +280,7 @@ export default function HomeView({
             }}
             onClick={() => {
               // Telegram-Username deines Bots:
-              const tgBotName = "PlugApp_bot";
+              const tgBotName = "PlugApp_bot"; // z.B. plugbenachrichtigungsbot
               const url = `https://t.me/${tgBotName}?start=plug_${user.id}`;
               window.open(url, "_blank");
             }}
@@ -327,6 +314,59 @@ export default function HomeView({
           paddingBottom: 42,
         }}
       >
+        {/* Notifikation für unbewertete Bestellung */}
+        <AnimatePresence>
+          {showRatingNotif && unbewerteteOrder && (
+            <motion.div
+              initial={{ y: -30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -30, opacity: 0 }}
+              transition={{ duration: 0.39, type: "spring" }}
+              style={{
+                background: "linear-gradient(93deg,#fbbf24 72%,#a3e63577 100%)",
+                color: "#23262e",
+                fontWeight: 800,
+                fontSize: 16.5,
+                borderRadius: 12,
+                boxShadow: "0 2px 18px #fbbf2440",
+                marginBottom: 18,
+                padding: "11px 18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                zIndex: 999,
+                position: "relative",
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <span style={{ fontSize: 22, marginRight: 4 }}>⚠️</span>
+                Deine letzte Bestellung wartet noch auf eine Bewertung!
+              </span>
+              <button
+                onClick={() => {
+                  setShowRatingNotif(false);
+                  // Optional: Direkt zu den Orders navigieren (Button sichtbar)
+                  if (typeof onGotoOrders === "function") onGotoOrders();
+                }}
+                style={{
+                  background: "#23262e",
+                  color: "#fff",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  border: 0,
+                  borderRadius: 7,
+                  padding: "6px 17px",
+                  cursor: "pointer",
+                  marginLeft: 18,
+                  boxShadow: "0 1.5px 8px #a3e63533",
+                }}
+              >
+                Jetzt bewerten
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* User Header */}
         <div
           style={{
