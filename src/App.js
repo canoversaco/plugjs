@@ -49,7 +49,11 @@ class ErrorBoundary extends React.Component {
 }
 
 async function sendTelegramNotification(user, text) {
-  if (!user?.telegramChatId) return;
+  if (!user?.telegramChatId) {
+    console.log("Keine ChatId für Telegram");
+    return;
+  }
+  console.log("Sende Telegram Nachricht:", user.telegramChatId, text); // <-- LOG!
   try {
     await fetch("http://185.198.234.220:3667/send-telegram", {
       method: "POST",
@@ -60,10 +64,9 @@ async function sendTelegramNotification(user, text) {
       }),
     });
   } catch (e) {
-    // Ignore
+    console.error("Fehler beim Senden:", e);
   }
 }
-
 export default class App extends React.Component {
   state = {
     view: "login",
