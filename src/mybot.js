@@ -5,7 +5,9 @@ const TELEGRAM_TOKEN = "7459654349:AAE3UmBpba5o8eXMOFtbLeZwlRUOiGsl5z8";
 const API_URL = "http://185.198.234.220:3000/api/save-telegram-id"; // <-- Passe hier ggf. deine Backend-URL an
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
-
+bot.on("message", (msg) => {
+  console.log("Empfange Nachricht:", msg);
+});
 // /start command mit optionalem payload
 bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
