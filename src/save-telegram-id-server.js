@@ -2,10 +2,11 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const { initializeApp, applicationDefault } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { initializeApp, cert } = require("firebase-admin/app");
+const serviceAccount = require("./serviceAccountKey.json"); // <-- Pfad anpassen!
 
 initializeApp({
-  credential: applicationDefault(),
+  credential: cert(serviceAccount),
 });
 const db = getFirestore();
 
