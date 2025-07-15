@@ -697,8 +697,10 @@ export default class App extends React.Component {
             onChat={(order) => this.setState({ chatOrder: order })}
             onProduktAdd={this.produktHinzufügen}
             onProduktUpdate={this.produktUpdaten}
-            onOrderStatusUpdate={this.handleOrderStatusUpdate}      // <--- HIER!
-            onOrderLocationUpdate={this.handleOrderLocationUpdate}  // <--- HIER!
+             onOrderStatusUpdate={this.handleOrderStatusUpdate}
+              onOrderDelete={this.handleOrderDelete}
+              onOrderUpdate={this.handleOrderUpdate} // z.B. status UND notiz zusammen
+                onOrderLocationUpdate={this.handleOrderLocationUpdate}  // <--- HIER!
           />
         )}
         {/* Fallback */}
