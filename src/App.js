@@ -48,14 +48,15 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// --- NEU: sendTelegramNotification 100% robust und mit Log
 async function sendTelegramNotification(user, text) {
   if (!user?.telegramChatId) {
-    console.log("Keine ChatId für Telegram");
+    console.log("[sendTelegramNotification] Keine ChatId für Telegram:", user);
     return;
   }
-  console.log("Sende Telegram Nachricht:", user.telegramChatId, text); // <-- LOG!
+  console.log("[sendTelegramNotification] Sende an", user.telegramChatId, "Text:", text);
   try {
-    await fetch("http://185.198.234.220:3667/send-telegram", {
+    const resp = await fetch("http://185.198.234.220:3667/send-telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -63,10 +64,17 @@ async function sendTelegramNotification(user, text) {
         text,
       }),
     });
+    if (!resp.ok) {
+      const msg = await resp.text();
+      console.error("[sendTelegramNotification] Fehler vom Server:", resp.status, msg);
+    } else {
+      console.log("[sendTelegramNotification] Erfolgreich geschickt.");
+    }
   } catch (e) {
-    console.error("Fehler beim Senden:", e);
+    console.error("[sendTelegramNotification] Fehler beim Senden:", e);
   }
 }
+
 export default class App extends React.Component {
   state = {
     view: "login",
@@ -204,8 +212,6 @@ export default class App extends React.Component {
     }
   };
 
-  // --------- ETA FEATURE: -----------
-  // Finde Order vom eingeloggten User, der unterwegs & eta gesetzt
   findActiveEtaOrder() {
     const { orders, user } = this.state;
     if (!user) return null;
@@ -218,7 +224,6 @@ export default class App extends React.Component {
     );
     return meineAktiven.length ? meineAktiven[0] : null;
   }
-  // ----------------------------------
 
   handleSendChatMessage = async (orderId, text, senderId) => {
     const orderRef = doc(db, "orders", orderId);
@@ -236,6 +241,7 @@ export default class App extends React.Component {
         users.find((u) => u.rolle === "admin" || u.role === "admin");
     }
 
+    console.log("[handleSendChatMessage] Empfaenger:", empfaenger);
     if (empfaenger && empfaenger.telegramChatId) {
       await sendTelegramNotification(
         empfaenger,
