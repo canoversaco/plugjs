@@ -51,7 +51,7 @@ class ErrorBoundary extends React.Component {
 async function sendTelegramNotification(user, text) {
   if (!user?.telegramChatId) return;
   try {
-    await fetch("http://185.198.234.220:3666/send-telegram", {
+    await fetch("http://185.198.234.220:3667/send-telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
