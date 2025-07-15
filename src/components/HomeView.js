@@ -281,7 +281,7 @@ export default function HomeView({
             onClick={() => {
               // Telegram-Username deines Bots:
               const tgBotName = "PlugApp_bot";
-              const url = `https://t.me/${tgBotName}?start=${user.id}`;
+              const url = `https://t.me/${tgBotName}?start=plug_${user.id}`;
               window.open(url, "_blank");
 
             }}
