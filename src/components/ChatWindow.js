@@ -37,6 +37,12 @@ export default class ChatWindow extends React.Component {
         ts: Date.now(),
       }),
     });
+
+      // <-- NEU: Notification auslösen! (WICHTIG)
+  if (typeof onSendMessage === "function") {
+    await onSendMessage(order.id, input, user.id);
+  }
+
     this.setState({ input: "" });
   };
 
