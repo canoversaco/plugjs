@@ -14,11 +14,13 @@ app.use(bodyParser.json());
 
 app.post("/api/save-telegram-id", async (req, res) => {
   const { userId, chatId } = req.body;
+  console.log("Request:", req.body); // <-- DAS HIER EINFÜGEN!
   if (!userId || !chatId) return res.status(400).send("Missing fields");
   try {
     await db.collection("users").doc(userId).update({ telegramChatId: chatId });
     return res.send({ success: true });
   } catch (e) {
+    console.error("Firestore Update Fehler:", e); // <--- DAS AUCH!
     return res.status(500).send(e.toString());
   }
 });
