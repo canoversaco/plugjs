@@ -16,7 +16,11 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   // Erwartetes Format: plug_USERID
   if (payload && payload.startsWith("plug_")) {
     const userId = payload.replace("plug_", "").trim();
-
+    console.log("[DEBUG] Sende Request an:", API_URL, userId, chatId);
+    await axios.post(API_URL, {
+      userId,
+      chatId,
+    });
     // Schicke die userId + chatId an dein Backend, damit du später Notifications schicken kannst!
     try {
       await axios.post(API_URL, {
