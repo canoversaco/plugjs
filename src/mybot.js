@@ -5,6 +5,10 @@ const TELEGRAM_TOKEN = "7459654349:AAE3UmBpba5o8eXMOFtbLeZwlRUOiGsl5z8";
 const API_URL = "http://185.198.234.220:3666/api/save-telegram-id"; // <-- Passe hier ggf. deine Backend-URL an
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+bot.sendMessage(msg.chat.id, "Testantwort von PlugBot! Deine ChatId: " + msg.chat.id)
+    .then(() => console.log("Gesendet!"))
+    .catch(e => console.error("SEND-FEHLER:", e));
+
 bot.on("message", (msg) => {
   console.log("Empfange Nachricht:", msg);
 });
