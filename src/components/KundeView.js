@@ -121,10 +121,23 @@ export default class KundeView extends React.Component {
     );
   }
 
-  // Helfer für ETA Restzeit-Text (dynamisch, 1 Minute Minimum)
+  // Schöne, große Zahl + Uhr-Icon, immer >=1 Minute
   renderEta(etaTimestamp) {
     const diff = Math.round((etaTimestamp - Date.now()) / 60000);
     return diff > 1 ? diff : 1;
+  }
+
+  // Fix: Prüft robust auf wirklich abgegebene Bewertung!
+  needsRating(order) {
+    // Wenn KEIN rating oder eines der Felder fehlt/0 ist, noch keine Bewertung!
+    return (
+      order.status === "abgeschlossen" &&
+      (!order.rating ||
+        typeof order.rating !== "object" ||
+        !order.rating.service ||
+        !order.rating.wartezeit ||
+        !order.rating.qualitaet)
+    );
   }
 
   renderChangeRequest(order) {
@@ -311,6 +324,7 @@ export default class KundeView extends React.Component {
                 marginBottom: 23,
                 padding: 18,
                 boxShadow: "0 2px 8px #00000018",
+                position: "relative", // Für ETA-Badge!
               }}
             >
               <div style={{ fontWeight: 700, fontSize: 18 }}>
@@ -329,30 +343,52 @@ export default class KundeView extends React.Component {
                 </span>
               </div>
 
-              {/* Änderungsvorschlag von Kurier */}
-              {order.changeRequest && this.renderChangeRequest(order)}
-
-              {/* ETA-Anzeige, falls unterwegs */}
+              {/* Modernes ETA-Badge */}
               {order.status === "unterwegs" &&
                 order.eta &&
                 order.eta > Date.now() && (
                   <div
                     style={{
-                      background: "linear-gradient(90deg,#a3e63555,#38bdf855)",
-                      color: "#0e820e",
-                      borderRadius: 9,
-                      padding: "7px 14px",
-                      fontWeight: 800,
-                      fontSize: 17,
-                      margin: "9px 0 12px 0",
-                      display: "inline-block",
-                      boxShadow: "0 2px 12px #38bdf822",
+                      position: "absolute",
+                      top: 20,
+                      right: 20,
+                      zIndex: 3,
+                      background: "rgba(56,189,248,0.93)",
+                      color: "#18181b",
+                      borderRadius: "32px",
+                      boxShadow: "0 4px 18px #38bdf844",
+                      padding: "9px 23px 9px 18px",
+                      fontWeight: 900,
+                      fontSize: 19,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      minWidth: 132,
+                      letterSpacing: 0.2,
                     }}
                   >
-                    ⏳ ETA: Ankunft in ca.{" "}
-                    <b>{this.renderEta(order.eta)}</b> Minuten 🛵
+                    <span style={{ fontSize: 21, marginRight: 5 }}>⏱️</span>
+                    <span>
+                      <b>{this.renderEta(order.eta)}</b>
+                      <span style={{ fontSize: 15, fontWeight: 600, marginLeft: 4 }}>
+                        min
+                      </span>
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: 10,
+                        fontSize: 18,
+                        color: "#0e820e",
+                        fontWeight: 700,
+                      }}
+                    >
+                      🛵
+                    </span>
                   </div>
                 )}
+
+              {/* Änderungsvorschlag von Kurier */}
+              {order.changeRequest && this.renderChangeRequest(order)}
 
               <div style={{ marginBottom: 6 }}>
                 Bestellt am:{" "}
@@ -412,8 +448,8 @@ export default class KundeView extends React.Component {
               >
                 💬 Chat zur Bestellung
               </button>
-              {/* Bewertung abgeben */}
-              {order.status === "abgeschlossen" && !order.rating && (
+              {/* Bewertung abgeben (NEU: robuster check!) */}
+              {this.needsRating(order) && (
                 <button
                   onClick={() => this.openRating(order.id)}
                   style={{
@@ -431,7 +467,7 @@ export default class KundeView extends React.Component {
                 </button>
               )}
               {/* Bewertung anzeigen */}
-              {order.rating && (
+              {order.rating && order.rating.service && (
                 <div style={{ marginTop: 7, color: "#a3e635" }}>
                   ⭐ Service: {order.rating.service} | Wartezeit:{" "}
                   {order.rating.wartezeit} | Qualität: {order.rating.qualitaet}
