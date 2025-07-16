@@ -51,6 +51,7 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: order.id });
     const { changeRequest = {} } = order;
     try {
+      // Optional: Preis neu berechnen!
       let newWarenkorb = changeRequest.newWarenkorb || order.warenkorb;
       let endpreis = 0;
       if (Array.isArray(newWarenkorb) && this.props.produkte) {
@@ -71,6 +72,7 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: null });
   }
 
+  // Ablehnen der Änderung
   async handleDeclineChange(order) {
     this.setState({ changeConfirmLoading: order.id });
     try {
@@ -119,18 +121,10 @@ export default class KundeView extends React.Component {
     );
   }
 
-  // 1 Minute Minimum
+  // Helfer für ETA Restzeit-Text (dynamisch, 1 Minute Minimum)
   renderEta(etaTimestamp) {
     const diff = Math.round((etaTimestamp - Date.now()) / 60000);
     return diff > 1 ? diff : 1;
-  }
-
-  // Noch keine Bewertung: robust gegen {} oder leere Felder!
-  needsRating(order) {
-    if (order.status !== "abgeschlossen") return false;
-    if (!order.rating || typeof order.rating !== "object") return true;
-    const { service, wartezeit, qualitaet } = order.rating;
-    return !service || !wartezeit || !qualitaet;
   }
 
   renderChangeRequest(order) {
@@ -142,6 +136,7 @@ export default class KundeView extends React.Component {
       ? changeRequest.changedItems
       : [];
 
+    // Zeige den neuen Warenkorb
     const newWarenkorb = Array.isArray(changeRequest.newWarenkorb)
       ? changeRequest.newWarenkorb
       : order.warenkorb;
@@ -197,6 +192,7 @@ export default class KundeView extends React.Component {
             </ul>
           </div>
         )}
+
         <div style={{ color: "#fbbf24", fontWeight: 600, marginTop: 8, marginBottom: 3 }}>
           Neuer Warenkorb (nach Änderung):
         </div>
@@ -222,6 +218,7 @@ export default class KundeView extends React.Component {
             );
           })}
         </ul>
+
         <div style={{ marginTop: 15 }}>
           <button
             onClick={() => this.handleAcceptChange(order)}
@@ -314,51 +311,8 @@ export default class KundeView extends React.Component {
                 marginBottom: 23,
                 padding: 18,
                 boxShadow: "0 2px 8px #00000018",
-                position: "relative", // Für ETA-Badge!
               }}
             >
-              {/* ETA als schwebendes Badge */}
-              {order.status === "unterwegs" &&
-                order.eta &&
-                order.eta > Date.now() && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 12,
-                      right: 18,
-                      zIndex: 5,
-                      background: "linear-gradient(90deg,#a3e635,#38bdf8)",
-                      color: "#18181b",
-                      borderRadius: "999px",
-                      boxShadow: "0 2px 12px #38bdf855",
-                      padding: "8px 19px 8px 15px",
-                      fontWeight: 900,
-                      fontSize: 19,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      minWidth: 115,
-                      border: "2.5px solid #23262e",
-                      userSelect: "none",
-                    }}
-                  >
-                    <span style={{ fontSize: 23, marginRight: 3 }}>⏱️</span>
-                    <b>{this.renderEta(order.eta)}</b>
-                    <span style={{ fontSize: 14, fontWeight: 600, marginLeft: 2 }}>
-                      min
-                    </span>
-                    <span
-                      style={{
-                        marginLeft: 7,
-                        fontSize: 17,
-                        color: "#0e820e",
-                        fontWeight: 700,
-                      }}
-                    >
-                      🛵
-                    </span>
-                  </div>
-                )}
               <div style={{ fontWeight: 700, fontSize: 18 }}>
                 Status:{" "}
                 <span
@@ -374,8 +328,31 @@ export default class KundeView extends React.Component {
                   {order.status || "?"}
                 </span>
               </div>
+
               {/* Änderungsvorschlag von Kurier */}
               {order.changeRequest && this.renderChangeRequest(order)}
+
+              {/* ETA-Anzeige, falls unterwegs */}
+              {order.status === "unterwegs" &&
+                order.eta &&
+                order.eta > Date.now() && (
+                  <div
+                    style={{
+                      background: "linear-gradient(90deg,#a3e63555,#38bdf855)",
+                      color: "#0e820e",
+                      borderRadius: 9,
+                      padding: "7px 14px",
+                      fontWeight: 800,
+                      fontSize: 17,
+                      margin: "9px 0 12px 0",
+                      display: "inline-block",
+                      boxShadow: "0 2px 12px #38bdf822",
+                    }}
+                  >
+                    ⏳ ETA: Ankunft in ca.{" "}
+                    <b>{this.renderEta(order.eta)}</b> Minuten 🛵
+                  </div>
+                )}
 
               <div style={{ marginBottom: 6 }}>
                 Bestellt am:{" "}
@@ -435,8 +412,8 @@ export default class KundeView extends React.Component {
               >
                 💬 Chat zur Bestellung
               </button>
-              {/* Bewertung abgeben (jetzt immer robust!) */}
-              {this.needsRating(order) && (
+              {/* Bewertung abgeben */}
+              {order.status === "abgeschlossen" && !order.rating && (
                 <button
                   onClick={() => this.openRating(order.id)}
                   style={{
@@ -454,7 +431,7 @@ export default class KundeView extends React.Component {
                 </button>
               )}
               {/* Bewertung anzeigen */}
-              {order.rating && order.rating.service && (
+              {order.rating && (
                 <div style={{ marginTop: 7, color: "#a3e635" }}>
                   ⭐ Service: {order.rating.service} | Wartezeit:{" "}
                   {order.rating.wartezeit} | Qualität: {order.rating.qualitaet}
