@@ -23,6 +23,7 @@ import PassPanel from "./components/PassPanel";
 import UserInventory from "./components/UserInventory";
 import WalletModal from "./components/WalletModal";
 import LottoView from "./components/LottoView";
+import NotificationPopup from "./components/NotificationPopup";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 
