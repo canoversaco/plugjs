@@ -497,38 +497,40 @@ export default class App extends React.Component {
                 `}
               </style>
               <div
-                style={{
-                  position: "fixed",
-                  top: 18,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  background:
-                    "linear-gradient(100deg, #38bdf8 65%, #a3e635 120%)",
-                  color: "#18181b",
-                  borderRadius: 15,
-                  padding: "16px 38px",
-                  boxShadow: "0 4px 24px #23262e33",
-                  zIndex: 5000,
-                  fontSize: 20,
-                  fontWeight: 900,
-                  letterSpacing: 0.01,
-                  minWidth: 240,
-                  textAlign: "center",
-                  border: "2px solid #18181b",
-                  animation: "etafadein 0.23s cubic-bezier(.18,.82,.36,1.13)"
-                }}
-              >
-                <span role="img" aria-label="Ankunft">⏳</span>
-                &nbsp;Ankunft in ca.&nbsp;
-                <span style={{ color: "#0e820e" }}>
-                  {Math.max(
-                    1,
-                    Math.round((activeEtaOrder.eta - Date.now()) / 60000)
-                  )}
-                </span>
-                &nbsp;Minuten&nbsp;
-                <span role="img" aria-label="Delivery">🛵</span>
-              </div>
+  style={{
+    position: "fixed",
+    top: 16,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "linear-gradient(100deg, #38bdf8 65%, #a3e635 120%)",
+    color: "#18181b",
+    borderRadius: 15,
+    padding: "12px 32px",
+    boxShadow: "0 4px 24px #23262e33",
+    zIndex: 5000,
+    fontSize: 18,
+    fontWeight: 900,
+    minWidth: 200,
+    textAlign: "center",
+    border: "2px solid #23262e",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    animation: "etafadein 0.23s cubic-bezier(.18,.82,.36,1.13)"
+  }}
+>
+  <span role="img" aria-label="Ankunft" style={{ fontSize: 23 }}>⏳</span>
+  <span>
+    Ankunft in ca.
+    <span style={{ color: "#0e820e", margin: "0 5px" }}>
+      {Math.max(1, Math.round((activeEtaOrder.eta - Date.now()) / 60000))}
+    </span>
+    Minuten
+  </span>
+  <span role="img" aria-label="Delivery" style={{ fontSize: 21, marginLeft: 6 }}>🛵</span>
+</div>
+
             </>
           )}
 
