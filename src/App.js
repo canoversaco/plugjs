@@ -18,7 +18,11 @@ import AdminView from "./components/AdminView";
 import MenuView from "./components/MenuView";
 import OrderView from "./components/OrderView";
 import ChatWindow from "./components/ChatWindow";
+import MysteryBoxUserView from "./components/MysteryBoxUserView";
+import PassPanel from "./components/PassPanel";
+import UserInventory from "./components/UserInventory";
 import WalletModal from "./components/WalletModal";
+import LottoView from "./components/LottoView";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 
