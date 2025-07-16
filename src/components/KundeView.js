@@ -51,7 +51,6 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: order.id });
     const { changeRequest = {} } = order;
     try {
-      // Optional: Preis neu berechnen!
       let newWarenkorb = changeRequest.newWarenkorb || order.warenkorb;
       let endpreis = 0;
       if (Array.isArray(newWarenkorb) && this.props.produkte) {
@@ -72,7 +71,6 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: null });
   }
 
-  // Ablehnen der Änderung
   async handleDeclineChange(order) {
     this.setState({ changeConfirmLoading: order.id });
     try {
@@ -121,23 +119,18 @@ export default class KundeView extends React.Component {
     );
   }
 
-  // Schöne, große Zahl + Uhr-Icon, immer >=1 Minute
+  // 1 Minute Minimum
   renderEta(etaTimestamp) {
     const diff = Math.round((etaTimestamp - Date.now()) / 60000);
     return diff > 1 ? diff : 1;
   }
 
-  // Fix: Prüft robust auf wirklich abgegebene Bewertung!
+  // Noch keine Bewertung: robust gegen {} oder leere Felder!
   needsRating(order) {
-    // Wenn KEIN rating oder eines der Felder fehlt/0 ist, noch keine Bewertung!
-    return (
-      order.status === "abgeschlossen" &&
-      (!order.rating ||
-        typeof order.rating !== "object" ||
-        !order.rating.service ||
-        !order.rating.wartezeit ||
-        !order.rating.qualitaet)
-    );
+    if (order.status !== "abgeschlossen") return false;
+    if (!order.rating || typeof order.rating !== "object") return true;
+    const { service, wartezeit, qualitaet } = order.rating;
+    return !service || !wartezeit || !qualitaet;
   }
 
   renderChangeRequest(order) {
@@ -149,7 +142,6 @@ export default class KundeView extends React.Component {
       ? changeRequest.changedItems
       : [];
 
-    // Zeige den neuen Warenkorb
     const newWarenkorb = Array.isArray(changeRequest.newWarenkorb)
       ? changeRequest.newWarenkorb
       : order.warenkorb;
@@ -205,7 +197,6 @@ export default class KundeView extends React.Component {
             </ul>
           </div>
         )}
-
         <div style={{ color: "#fbbf24", fontWeight: 600, marginTop: 8, marginBottom: 3 }}>
           Neuer Warenkorb (nach Änderung):
         </div>
@@ -231,7 +222,6 @@ export default class KundeView extends React.Component {
             );
           })}
         </ul>
-
         <div style={{ marginTop: 15 }}>
           <button
             onClick={() => this.handleAcceptChange(order)}
@@ -327,6 +317,48 @@ export default class KundeView extends React.Component {
                 position: "relative", // Für ETA-Badge!
               }}
             >
+              {/* ETA als schwebendes Badge */}
+              {order.status === "unterwegs" &&
+                order.eta &&
+                order.eta > Date.now() && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 12,
+                      right: 18,
+                      zIndex: 5,
+                      background: "linear-gradient(90deg,#a3e635,#38bdf8)",
+                      color: "#18181b",
+                      borderRadius: "999px",
+                      boxShadow: "0 2px 12px #38bdf855",
+                      padding: "8px 19px 8px 15px",
+                      fontWeight: 900,
+                      fontSize: 19,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 7,
+                      minWidth: 115,
+                      border: "2.5px solid #23262e",
+                      userSelect: "none",
+                    }}
+                  >
+                    <span style={{ fontSize: 23, marginRight: 3 }}>⏱️</span>
+                    <b>{this.renderEta(order.eta)}</b>
+                    <span style={{ fontSize: 14, fontWeight: 600, marginLeft: 2 }}>
+                      min
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: 7,
+                        fontSize: 17,
+                        color: "#0e820e",
+                        fontWeight: 700,
+                      }}
+                    >
+                      🛵
+                    </span>
+                  </div>
+                )}
               <div style={{ fontWeight: 700, fontSize: 18 }}>
                 Status:{" "}
                 <span
@@ -342,51 +374,6 @@ export default class KundeView extends React.Component {
                   {order.status || "?"}
                 </span>
               </div>
-
-              {/* Modernes ETA-Badge */}
-              {order.status === "unterwegs" &&
-                order.eta &&
-                order.eta > Date.now() && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 20,
-                      right: 20,
-                      zIndex: 3,
-                      background: "rgba(56,189,248,0.93)",
-                      color: "#18181b",
-                      borderRadius: "32px",
-                      boxShadow: "0 4px 18px #38bdf844",
-                      padding: "9px 23px 9px 18px",
-                      fontWeight: 900,
-                      fontSize: 19,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      minWidth: 132,
-                      letterSpacing: 0.2,
-                    }}
-                  >
-                    <span style={{ fontSize: 21, marginRight: 5 }}>⏱️</span>
-                    <span>
-                      <b>{this.renderEta(order.eta)}</b>
-                      <span style={{ fontSize: 15, fontWeight: 600, marginLeft: 4 }}>
-                        min
-                      </span>
-                    </span>
-                    <span
-                      style={{
-                        marginLeft: 10,
-                        fontSize: 18,
-                        color: "#0e820e",
-                        fontWeight: 700,
-                      }}
-                    >
-                      🛵
-                    </span>
-                  </div>
-                )}
-
               {/* Änderungsvorschlag von Kurier */}
               {order.changeRequest && this.renderChangeRequest(order)}
 
@@ -448,7 +435,7 @@ export default class KundeView extends React.Component {
               >
                 💬 Chat zur Bestellung
               </button>
-              {/* Bewertung abgeben (NEU: robuster check!) */}
+              {/* Bewertung abgeben (jetzt immer robust!) */}
               {this.needsRating(order) && (
                 <button
                   onClick={() => this.openRating(order.id)}
