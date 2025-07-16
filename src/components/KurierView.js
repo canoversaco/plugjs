@@ -10,6 +10,7 @@ import { fromLonLat, toLonLat } from "ol/proj";
 import Overlay from "ol/Overlay";
 import "ol/ol.css";
 
+// Statusoptionen
 const STATUS_OPTIONS = [
   "offen",
   "akzeptiert",
@@ -27,8 +28,7 @@ const STATUS_COLORS = {
   storniert: "#f87171",
 };
 
-// ---------------------------------------------
-// MAP PICKER mit Suchleiste & Marker für Treffpunkt
+// =============== MAP PICKER ===================
 function TreffpunktMapPicker({ value, onChange, onCancel }) {
   const mapRef = useRef();
   const markerRef = useRef();
@@ -36,7 +36,6 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [marker, setMarker] = useState(value || [51.5, 7.0]);
 
-  // Init OpenLayers map
   React.useEffect(() => {
     const markerEl = document.createElement("div");
     markerEl.style.background = "#38bdf8";
@@ -82,7 +81,6 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
     // eslint-disable-next-line
   }, []);
 
-  // Marker verschieben wenn sich marker-Position ändert
   React.useEffect(() => {
     if (mapRef.current && markerRef.current && marker) {
       const coord = fromLonLat([marker[1], marker[0]]);
@@ -91,7 +89,6 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
     }
   }, [marker]);
 
-  // Suche nach Adresse
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!search.trim()) return;
@@ -127,10 +124,7 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
 
   return (
     <div style={{ margin: "10px 0" }}>
-      <form
-        onSubmit={handleSearch}
-        style={{ marginBottom: 8, display: "flex" }}
-      >
+      <form onSubmit={handleSearch} style={{ marginBottom: 8, display: "flex" }}>
         <input
           type="text"
           value={search}
@@ -175,8 +169,7 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
         }}
       />
       <div style={{ fontSize: 14, color: "#a1a1aa" }}>
-        Auf die Karte klicken oder Adresse suchen, um einen Treffpunkt zu
-        wählen.
+        Auf die Karte klicken oder Adresse suchen, um einen Treffpunkt zu wählen.
       </div>
       <div style={{ marginTop: 10 }}>
         <button
@@ -227,7 +220,6 @@ function EditOrderPanel({ order, produkte, onSave, onCancel }) {
   );
   const [extraNote, setExtraNote] = useState("");
 
-  // Handle Menge ändern oder entfernen
   const handleChange = (idx, field, value) => {
     setItems((old) =>
       old.map((it, i) =>
@@ -243,7 +235,6 @@ function EditOrderPanel({ order, produkte, onSave, onCancel }) {
     );
   };
 
-  // Save klick: Erzeuge neuen Warenkorb & Änderungsobjekt
   const handleSave = () => {
     const changedItems = items
       .filter((it) => it.removed || it.changed)
@@ -259,7 +250,6 @@ function EditOrderPanel({ order, produkte, onSave, onCancel }) {
       alert("Keine Änderung vorgenommen.");
       return;
     }
-    // Erstelle neuen Warenkorb (ohne entfernte Produkte)
     const newWarenkorb = items
       .filter((it) => !it.removed)
       .map((it) => ({
@@ -412,7 +402,7 @@ function EditOrderPanel({ order, produkte, onSave, onCancel }) {
   );
 }
 
-// ========== KURIER VIEW ===========
+// ========== KURIER VIEW (inkl. ETA!) ===========
 export default function KurierView({
   user,
   orders = [],
@@ -422,11 +412,12 @@ export default function KurierView({
   onOrderDelete,
 }) {
   const [statusEditId, setStatusEditId] = useState(null);
-  const [treffpunktEdit, setTreffpunktEdit] = useState(null); // Order-ID die editiert wird
+  const [treffpunktEdit, setTreffpunktEdit] = useState(null);
   const [loadingUpdate, setLoadingUpdate] = useState(false);
-
-  // NEU: Änderungspanel
   const [orderEditId, setOrderEditId] = useState(null);
+
+  // ETA Minuten pro Bestellung (nur lokal)
+  const [etaInputs, setEtaInputs] = useState({});
 
   // Status ändern
   const handleStatusChange = async (orderId, status) => {
@@ -442,6 +433,25 @@ export default function KurierView({
     setLoadingUpdate(false);
   };
 
+  // ETA setzen
+  const handleSetEta = async (orderId) => {
+    const etaMin = Number(etaInputs[orderId]);
+    if (!etaMin || etaMin < 1) {
+      alert("Bitte gültige Minuten eingeben.");
+      return;
+    }
+    const eta = Date.now() + etaMin * 60000;
+    await updateDoc(doc(db, "orders", orderId), { eta });
+    setEtaInputs((old) => ({ ...old, [orderId]: "" }));
+    alert(`Ankunftszeit (ETA) auf ${etaMin} Minuten gesetzt!`);
+  };
+
+  // ETA anzeigen
+  const renderEta = (etaTimestamp) => {
+    const diff = Math.round((etaTimestamp - Date.now()) / 60000);
+    return diff > 1 ? diff : 1;
+  };
+
   // Löschen
   const handleDelete = async (orderId) => {
     if (window.confirm("Bestellung wirklich löschen?")) {
@@ -451,7 +461,6 @@ export default function KurierView({
 
   // Änderung speichern/an Kunde schicken
   const handleSaveOrderEdit = async (orderId, { newWarenkorb, changedItems, extraNote }) => {
-    // Schicke Änderungsvorschlag an Kunde
     await updateDoc(doc(db, "orders", orderId), {
       changeRequest: {
         from: user?.username || "Kurier",
@@ -542,6 +551,9 @@ export default function KurierView({
                 </th>
                 <th style={{ textAlign: "left", padding: "5px 6px" }}>
                   Aktionen
+                </th>
+                <th style={{ textAlign: "left", padding: "5px 6px" }}>
+                  ETA (min)
                 </th>
               </tr>
             </thead>
@@ -748,6 +760,58 @@ export default function KurierView({
                       />
                     )}
                   </td>
+                  <td style={{ padding: 8 }}>
+                    {/* ETA setzen und anzeigen */}
+                    <input
+                      type="number"
+                      min={1}
+                      value={etaInputs[order.id] || ""}
+                      onChange={(e) =>
+                        setEtaInputs((old) => ({
+                          ...old,
+                          [order.id]: e.target.value,
+                        }))
+                      }
+                      style={{
+                        width: 50,
+                        marginRight: 5,
+                        borderRadius: 6,
+                        border: "1px solid #383838",
+                        fontSize: 14,
+                        padding: 4,
+                        background: "#191a20",
+                        color: "#fff",
+                      }}
+                      placeholder="Min"
+                    />
+                    <button
+                      onClick={() => handleSetEta(order.id)}
+                      style={{
+                        background: "#a3e635",
+                        color: "#18181b",
+                        border: 0,
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Setzen
+                    </button>
+                    {order.eta && order.eta > Date.now() && (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          color: "#a3e635",
+                          fontWeight: 700,
+                          fontSize: 15,
+                        }}
+                      >
+                        ETA: {renderEta(order.eta)} min
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -799,6 +863,9 @@ export default function KurierView({
                 </th>
                 <th style={{ textAlign: "left", padding: "5px 6px" }}>
                   Aktionen
+                </th>
+                <th style={{ textAlign: "left", padding: "5px 6px" }}>
+                  ETA
                 </th>
               </tr>
             </thead>
@@ -990,6 +1057,13 @@ export default function KurierView({
                     >
                       🗑️ Löschen
                     </button>
+                  </td>
+                  <td style={{ padding: 8 }}>
+                    {order.eta && order.eta > Date.now() && (
+                      <span style={{ color: "#a3e635", fontWeight: 700 }}>
+                        ETA: {renderEta(order.eta)} min
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
