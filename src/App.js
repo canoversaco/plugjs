@@ -504,8 +504,8 @@ export default class App extends React.Component {
              <div
                 style={{
                   position: "fixed",
-                  top: 75,
-                  left: 22,
+                  top: 80,
+                  left: 10,
                   zIndex: 5000,
                   background: "rgba(30,32,40,0.74)",
                   boxShadow: "0 3px 16px #38bdf81c, 0 1.5px 6px #0003",
