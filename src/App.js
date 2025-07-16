@@ -19,10 +19,6 @@ import MenuView from "./components/MenuView";
 import OrderView from "./components/OrderView";
 import ChatWindow from "./components/ChatWindow";
 import WalletModal from "./components/WalletModal";
-import PassPanel from "./components/PassPanel";
-import LottoView from "./components/LottoView";
-import MysteryBoxUserView from "./components/MysteryBoxUserView";
-import UserInventory from "./components/UserInventory";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 
@@ -54,7 +50,12 @@ async function sendTelegramNotification(user, text) {
     console.log("[sendTelegramNotification] Keine ChatId für Telegram:", user);
     return;
   }
-  console.log("[sendTelegramNotification] Sende an", user.telegramChatId, "Text:", text);
+  console.log(
+    "[sendTelegramNotification] Sende an",
+    user.telegramChatId,
+    "Text:",
+    text
+  );
   try {
     const resp = await fetch("http://185.198.234.220:3667/send-telegram", {
       method: "POST",
@@ -66,7 +67,11 @@ async function sendTelegramNotification(user, text) {
     });
     if (!resp.ok) {
       const msg = await resp.text();
-      console.error("[sendTelegramNotification] Fehler vom Server:", resp.status, msg);
+      console.error(
+        "[sendTelegramNotification] Fehler vom Server:",
+        resp.status,
+        msg
+      );
     } else {
       console.log("[sendTelegramNotification] Erfolgreich geschickt.");
     }
@@ -497,40 +502,68 @@ export default class App extends React.Component {
                 `}
               </style>
               <div
-  style={{
-    position: "fixed",
-    top: 16,
-    left: "50%",
-    transform: "translateX(-50%)",
-    background: "linear-gradient(100deg, #38bdf8 65%, #a3e635 120%)",
-    color: "#18181b",
-    borderRadius: 15,
-    padding: "12px 32px",
-    boxShadow: "0 4px 24px #23262e33",
-    zIndex: 5000,
-    fontSize: 18,
-    fontWeight: 900,
-    minWidth: 200,
-    textAlign: "center",
-    border: "2px solid #23262e",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    animation: "etafadein 0.23s cubic-bezier(.18,.82,.36,1.13)"
-  }}
->
-  <span role="img" aria-label="Ankunft" style={{ fontSize: 23 }}>⏳</span>
-  <span>
-    Ankunft in ca.
-    <span style={{ color: "#0e820e", margin: "0 5px" }}>
-      {Math.max(1, Math.round((activeEtaOrder.eta - Date.now()) / 60000))}
-    </span>
-    Minuten
-  </span>
-  <span role="img" aria-label="Delivery" style={{ fontSize: 21, marginLeft: 6 }}>🛵</span>
-</div>
-
+                style={{
+                  position: "fixed",
+                  bottom: 24,
+                  right: 22,
+                  zIndex: 5000,
+                  background: "rgba(30,32,40,0.68)",
+                  boxShadow: "0 4px 24px #38bdf81a, 0 1.5px 6px #0005",
+                  backdropFilter: "blur(8px)",
+                  borderRadius: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 18px 10px 13px",
+                  fontSize: 16,
+                  color: "#f4f4f5",
+                  fontWeight: 600,
+                  fontFamily: "'Inter', 'Roboto', 'Arial', sans-serif",
+                  letterSpacing: 0.11,
+                  border: "1.7px solid #38bdf8",
+                  minWidth: 0,
+                  maxWidth: 260,
+                  transition: "box-shadow 0.16s",
+                  animation: "etafadein 0.21s cubic-bezier(.21,.8,.34,1.18)",
+                  cursor: "default",
+                }}
+              >
+                <span
+                  style={{
+                    background:
+                      "linear-gradient(135deg,#38bdf8 60%,#a3e635 120%)",
+                    borderRadius: "50%",
+                    width: 34,
+                    height: 34,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 1.5px 4px #23262e55",
+                    fontSize: 19,
+                    color: "#18181b",
+                  }}
+                >
+                  ⏳
+                </span>
+                <span
+                  style={{
+                    flex: 1,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  Ankunft&nbsp;
+                  <span style={{ color: "#a3e635", fontWeight: 900 }}>
+                    {Math.max(
+                      1,
+                      Math.round((activeEtaOrder.eta - Date.now()) / 60000)
+                    )}
+                  </span>
+                  &nbsp;min&nbsp;
+                  <span style={{ fontSize: 16, marginLeft: 1 }}>🛵</span>
+                </span>
+              </div>
             </>
           )}
 
@@ -567,10 +600,7 @@ export default class App extends React.Component {
           />
         )}
         {this.state.view === "login" && (
-          <LoginView
-            users={this.state.users}
-            onLogin={this.handleLogin}
-          />
+          <LoginView users={this.state.users} onLogin={this.handleLogin} />
         )}
         {this.state.view === "home" && this.state.user && (
           <HomeView
@@ -594,16 +624,15 @@ export default class App extends React.Component {
             closeBroadcast={() => this.setState({ showBroadcast: false })}
           />
         )}
-        {this.state.view === "inventar" &&
-          this.state.user && (
-            <UserInventory
-              user={this.state.user}
-              produkte={this.state.produkte}
-              onGoBack={() => this.setState({ view: "home" })}
-              onOrderFromInventory={this.handleOrderFromInventory}
-              onSwapFromInventory={this.handleSwapFromInventory}
-            />
-          )}
+        {this.state.view === "inventar" && this.state.user && (
+          <UserInventory
+            user={this.state.user}
+            produkte={this.state.produkte}
+            onGoBack={() => this.setState({ view: "home" })}
+            onOrderFromInventory={this.handleOrderFromInventory}
+            onSwapFromInventory={this.handleSwapFromInventory}
+          />
+        )}
         {this.state.view === "order_inventory" &&
           this.state.user &&
           this.state.warenkorbFromInventory && (
@@ -674,8 +703,9 @@ export default class App extends React.Component {
             onBuyPass={this.handleBuyPass}
           />
         )}
-        {this.state.view === "boxen" && this.state.user && (
-          !this.state.user.id || this.state.user.guthaben === undefined ? (
+        {this.state.view === "boxen" &&
+          this.state.user &&
+          (!this.state.user.id || this.state.user.guthaben === undefined ? (
             <div>Fehler: Benutzerdaten unvollständig</div>
           ) : (
             <ErrorBoundary>
@@ -687,8 +717,7 @@ export default class App extends React.Component {
                 onGoInventar={this.handleGoInventar}
               />
             </ErrorBoundary>
-          )
-        )}
+          ))}
         {this.state.view === "admin" && this.state.user && (
           <AdminView
             user={this.state.user}
@@ -699,10 +728,10 @@ export default class App extends React.Component {
             onChat={(order) => this.setState({ chatOrder: order })}
             onProduktAdd={this.produktHinzufügen}
             onProduktUpdate={this.produktUpdaten}
-             onOrderStatusUpdate={this.handleOrderStatusUpdate}
-              onOrderDelete={this.handleOrderDelete}
-              onOrderUpdate={this.handleOrderUpdate} // z.B. status UND notiz zusammen
-                onOrderLocationUpdate={this.handleOrderLocationUpdate}  // <--- HIER!
+            onOrderStatusUpdate={this.handleOrderStatusUpdate}
+            onOrderDelete={this.handleOrderDelete}
+            onOrderUpdate={this.handleOrderUpdate} // z.B. status UND notiz zusammen
+            onOrderLocationUpdate={this.handleOrderLocationUpdate} // <--- HIER!
           />
         )}
         {/* Fallback */}
@@ -718,7 +747,7 @@ export default class App extends React.Component {
           "kurier",
           "pässe",
           "boxen",
-          "admin"
+          "admin",
         ].includes(this.state.view) && <div>Unbekannte Ansicht</div>}
       </>
     );
