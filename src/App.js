@@ -501,30 +501,30 @@ export default class App extends React.Component {
                   }
                 `}
               </style>
-              <div
+             <div
                 style={{
                   position: "fixed",
-                  bottom: 24,
-                  right: 22,
+                  top: 22,
+                  left: 22,
                   zIndex: 5000,
-                  background: "rgba(30,32,40,0.68)",
-                  boxShadow: "0 4px 24px #38bdf81a, 0 1.5px 6px #0005",
-                  backdropFilter: "blur(8px)",
+                  background: "rgba(30,32,40,0.74)",
+                  boxShadow: "0 3px 16px #38bdf81c, 0 1.5px 6px #0003",
+                  backdropFilter: "blur(9px)",
                   borderRadius: 13,
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: "10px 18px 10px 13px",
-                  fontSize: 16,
+                  gap: 11,
+                  padding: "9px 18px 9px 13px",
+                  fontSize: 15.5,
                   color: "#f4f4f5",
                   fontWeight: 600,
                   fontFamily: "'Inter', 'Roboto', 'Arial', sans-serif",
-                  letterSpacing: 0.11,
-                  border: "1.7px solid #38bdf8",
+                  letterSpacing: 0.06,
+                  border: "1.6px solid #38bdf8",
                   minWidth: 0,
                   maxWidth: 260,
                   transition: "box-shadow 0.16s",
-                  animation: "etafadein 0.21s cubic-bezier(.21,.8,.34,1.18)",
+                  animation: "etafadein 0.23s cubic-bezier(.21,.8,.34,1.18)",
                   cursor: "default",
                 }}
               >
@@ -533,13 +533,13 @@ export default class App extends React.Component {
                     background:
                       "linear-gradient(135deg,#38bdf8 60%,#a3e635 120%)",
                     borderRadius: "50%",
-                    width: 34,
-                    height: 34,
+                    width: 32,
+                    height: 32,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: "0 1.5px 4px #23262e55",
-                    fontSize: 19,
+                    fontSize: 17,
                     color: "#18181b",
                   }}
                 >
