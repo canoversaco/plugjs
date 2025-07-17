@@ -26,25 +26,26 @@ export default class ChatWindow extends React.Component {
     if (this.state.unsub) this.state.unsub();
   }
 
-  handleSend = async () => {
-    const { order, user } = this.props;
-    const { input } = this.state;
-    if (!input.trim()) return;
-    await updateDoc(doc(db, "orders", order.id), {
-      chat: arrayUnion({
-        user: user.username,
-        text: input,
-        ts: Date.now(),
-      }),
-    });
+ handleSend = async () => {
+  const { order, user, onSendMessage } = this.props;
+  const { input } = this.state;
+  if (!input.trim()) return;
+  await updateDoc(doc(db, "orders", order.id), {
+    chat: arrayUnion({
+      user: user.username,
+      text: input,
+      ts: Date.now(),
+    }),
+  });
 
-      // <-- NEU: Notification auslösen! (WICHTIG)
+  // <-- NEU: Notification auslösen! (WICHTIG)
   if (typeof onSendMessage === "function") {
+    console.log("[ChatWindow] onSendMessage triggered"); // <--- WICHTIGER LOG!
     await onSendMessage(order.id, input, user.id);
   }
 
-    this.setState({ input: "" });
-  };
+  this.setState({ input: "" });
+};
 
   render() {
     const { user, onClose } = this.props;
