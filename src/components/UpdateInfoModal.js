@@ -56,7 +56,7 @@ export default function UpdateInfoModal({ onClose }) {
           </li>
         </ul>
         <div style={{ fontSize: 15.5, color: "#d1d5db", marginBottom: 16 }}>
-          <b>Tipp:</b> Für die beste Erfahrung nutze die App als PWA! Einfach im Browser „Zum Startbildschirm hinzufügen“ wählen.
+          <b></b> 
         </div>
         <button
           disabled={!canClose}
