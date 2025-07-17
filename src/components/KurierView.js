@@ -410,6 +410,7 @@ export default function KurierView({
   onGoBack,
   onChat,
   onOrderDelete,
+  onOrderStatusUpdate,
 }) {
   const [statusEditId, setStatusEditId] = useState(null);
   const [treffpunktEdit, setTreffpunktEdit] = useState(null);
