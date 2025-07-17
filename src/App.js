@@ -720,7 +720,6 @@ export default class App extends React.Component {
         )}
         {this.state.view === "kurier" && this.state.user && (
           <KurierView
-            <KurierView
   user={this.state.user}
   orders={this.state.orders}
   produkte={this.state.produkte}
