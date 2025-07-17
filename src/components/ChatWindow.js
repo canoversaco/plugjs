@@ -33,7 +33,6 @@ export default class ChatWindow extends React.Component {
   await updateDoc(doc(db, "orders", order.id), {
     chat: arrayUnion({
       user: user.username,
-      text: input,
       ts: Date.now(),
     }),
   });
