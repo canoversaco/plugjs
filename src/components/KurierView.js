@@ -424,7 +424,7 @@ export default function KurierView({
   const handleStatusChange = async (orderId, status) => {
   if (typeof props.onOrderStatusUpdate === "function") {
     await props.onOrderStatusUpdate(orderId, status);
-  } else {
+  
     await updateDoc(doc(db, "orders", orderId), { status });
   }
   setStatusEditId(null);
