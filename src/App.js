@@ -202,6 +202,8 @@ export default class App extends React.Component {
           !(user.btc_deposits || []).some((t) => t.txid === tx.txid)
       );
 
+
+      
       if (passendeTx) {
         const txBtc = passendeTx.value / 1e8;
         const eurValue = txBtc * btcPrice;
@@ -220,6 +222,13 @@ export default class App extends React.Component {
           openDeposit: { ...open, erledigt: true, txid: passendeTx.txid },
         });
       }
+if (user.telegramChatId) {
+  await sendTelegramNotification(
+    user,
+    `💰 Deine Einzahlung war erfolgreich! Dein Guthaben wurde um <b>${eurValue.toFixed(2)} €</b> erhöht.`
+  );
+}
+      
     }
   };
 
@@ -262,18 +271,20 @@ export default class App extends React.Component {
   };
 
   handleOrderStatusUpdate = async (orderId, status) => {
-    const orderRef = doc(db, "orders", orderId);
-    await updateDoc(orderRef, { status });
-    const orderSnap = await getDoc(orderRef);
-    const order = orderSnap.data();
-    const kunde = this.state.users.find((u) => u.username === order.kunde);
-    if (kunde?.telegramChatId) {
-      await sendTelegramNotification(
-        kunde,
-        `🚚 Dein Bestellstatus hat sich geändert: ${status.toUpperCase()}`
-      );
+  const orderRef = doc(db, "orders", orderId);
+  await updateDoc(orderRef, { status });
+  const orderSnap = await getDoc(orderRef);
+  const order = orderSnap.data();
+  const kunde = this.state.users.find((u) => u.username === order.kunde);
+  if (kunde?.telegramChatId) {
+    let msg = `🚚 Dein Bestellstatus wurde geändert: <b>${status.toUpperCase()}</b>`;
+    if (status === "abgeschlossen") {
+      msg = `✅ Deine Bestellung wurde <b>abgeschlossen</b>. Bitte bewerte jetzt deine Bestellung!`;
     }
-  };
+    await sendTelegramNotification(kunde, msg);
+  }
+};
+
 
   handleOrderLocationUpdate = async (orderId, neuerStandort) => {
     const orderRef = doc(db, "orders", orderId);
