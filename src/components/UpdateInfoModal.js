@@ -43,22 +43,22 @@ export default function UpdateInfoModal({ onClose }) {
         </h2>
         <ul style={{ fontSize: 17, lineHeight: 1.7, marginBottom: 12 }}>
           <li>
-            <h2 style={{ fontWeight: 900, fontSize: 16, marginBottom: 7, color: "#17ff00", letterSpacing: 0.4 }}>
+            <h2 style={{ fontWeight: 900, fontSize: 20, marginBottom: 7, color: "#17ff00", letterSpacing: 0.4 }}>
           Ankunftszeit
         </h2> Deine Lieferzeit wird jetzt in echtzeit oben links angezeigt!
           </li>
           <li>
-            <h2 style={{ fontWeight: 900, fontSize: 16, marginBottom: 7, color: "#00f0ff", letterSpacing: 0.4 }}>
+            <h2 style={{ fontWeight: 900, fontSize: 20, marginBottom: 7, color: "#00f0ff", letterSpacing: 0.4 }}>
           Telegram-Benachrichtigungen
         </h2> Wichtige Updates direkt aufs Handy – aktiviere Telegram Benachrichtigunen!
           </li>
           <li>
-            <h2 style={{ fontWeight: 900, fontSize: 16, marginBottom: 7, color: "#fb00ff", letterSpacing: 0.4 }}>
+            <h2 style={{ fontWeight: 900, fontSize: 20, marginBottom: 7, color: "#fb00ff", letterSpacing: 0.4 }}>
           Wochen-/Monatspässe
         </h2> Spare bis zu 150€ mit Wochen/Monatspässen!
           </li>
           <li>
-            <h2 style={{ fontWeight: 900, fontSize: 16, marginBottom: 7, color: "#ffaa00", letterSpacing: 0.4 }}>
+            <h2 style={{ fontWeight: 900, fontSize: 20, marginBottom: 7, color: "#ffaa00", letterSpacing: 0.4 }}>
           Lotto & Mystery Boxen
         </h2> Versuche dein Glück bei der Wöchentlichen Ziehung oder bei einer Mystery Box!
           </li>
