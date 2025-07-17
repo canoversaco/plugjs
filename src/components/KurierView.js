@@ -410,7 +410,7 @@ export default function KurierView({
   onGoBack,
   onChat,
   onOrderDelete,
-  onOrderStatusUpdate,
+  onOrderStatusUpdate,    // <---- HIER ergänzen
 }) {
   const [statusEditId, setStatusEditId] = useState(null);
   const [treffpunktEdit, setTreffpunktEdit] = useState(null);
@@ -421,10 +421,10 @@ export default function KurierView({
   const [etaInputs, setEtaInputs] = useState({});
 
   // Status ändern
-  const handleStatusChange = async (orderId, status) => {
-  if (typeof props.onOrderStatusUpdate === "function") {
-    await props.onOrderStatusUpdate(orderId, status);
-  
+ const handleStatusChange = async (orderId, status) => {
+  if (typeof onOrderStatusUpdate === "function") {
+    await onOrderStatusUpdate(orderId, status);
+  } else {
     await updateDoc(doc(db, "orders", orderId), { status });
   }
   setStatusEditId(null);
@@ -679,12 +679,12 @@ export default function KurierView({
                     </span>
                     {statusEditId === order.id && (
                       <select
-                        autoFocus
-                        value={order.status}
-                        onBlur={() => setStatusEditId(null)}
-                        onChange={(e) =>
-                          handleStatusChange(order.id, e.target.value)
-                        }
+  autoFocus
+  value={order.status}
+  onBlur={() => setStatusEditId(null)}
+  onChange={(e) =>
+    handleStatusChange(order.id, e.target.value)
+  }
                         style={{
                           marginLeft: 7,
                           borderRadius: 7,
