@@ -180,6 +180,10 @@ export default class App extends React.Component {
       const price = await fetchBtcPriceEUR();
       this.setState({ btcPrice: price });
     }, 120000);
+      if (!localStorage.getItem("plug_updateinfo_seen_v2")) {
+    this.setState({ showUpdateModal: true });
+  }
+}
   }
 
   componentWillUnmount() {
@@ -224,13 +228,14 @@ export default class App extends React.Component {
           ],
           openDeposit: { ...open, erledigt: true, txid: passendeTx.txid },
         });
-      }
-if (user.telegramChatId) {
+        if (user.telegramChatId) {
   await sendTelegramNotification(
     user,
     `💰 Deine Einzahlung war erfolgreich! Dein Guthaben wurde um <b>${eurValue.toFixed(2)} €</b> erhöht.`
   );
 }
+      }
+
       
     }
   };
@@ -329,7 +334,6 @@ if (user.telegramChatId) {
   this.setState({ 
     user, 
     view: "home", 
-    showUpdateModal: true,  // <--- zeigt das Modal
     updateModalSeen: false
   });
 };
@@ -591,11 +595,14 @@ if (user.telegramChatId) {
               </div>
             </>
           )}
-    {this.state.showUpdateModal && !this.state.updateModalSeen && (
-      <UpdateInfoModal
-        onClose={() => this.setState({ showUpdateModal: false, updateModalSeen: true })}
-          />
-      )}
+    {this.state.showUpdateModal && (
+  <UpdateInfoModal
+    onClose={() => {
+      this.setState({ showUpdateModal: false });
+      localStorage.setItem("plug_updateinfo_seen_v2", "1"); // neue Version? -> "_v2"
+    }}
+  />
+)}
         {/* ---- Rest wie gehabt ---- */}
 
         {this.state.chatOrder && (
