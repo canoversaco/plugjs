@@ -421,9 +421,13 @@ export default function KurierView({
 
   // Status ändern
   const handleStatusChange = async (orderId, status) => {
+  if (typeof props.onOrderStatusUpdate === "function") {
+    await props.onOrderStatusUpdate(orderId, status);
+  } else {
     await updateDoc(doc(db, "orders", orderId), { status });
-    setStatusEditId(null);
-  };
+  }
+  setStatusEditId(null);
+};
 
   // Treffpunkt ändern (und speichern)
   const handleSaveTreffpunkt = async (orderId, pos) => {
