@@ -49,7 +49,7 @@ export default function UpdateInfoModal({ onClose }) {
             <b>Telegram-Benachrichtigungen:</b> Wichtige Updates direkt aufs Handy – aktiviere Telegram Benachrichtigunen!
           </li>
           <li>
-            <b>Chat-Verbesserungen:</b> Schreibe direkt mit Kurier/Admin über die Bestelldetails.
+            <b>Wochen-/Monatspässe</b> Spare bis zu 150€ mit Wochen/Monatspässen!
           </li>
           <li>
             <b>Lotto & Mystery-Boxen:</b> Versuche dein Glück bei der Wöchentlichen Ziehung oder bei einer Mystery Box!
