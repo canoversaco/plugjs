@@ -720,12 +720,15 @@ export default class App extends React.Component {
         )}
         {this.state.view === "kurier" && this.state.user && (
           <KurierView
-            onOrderStatusUpdate={this.handleOrderStatusUpdate}
-            user={this.state.user}
-            orders={this.state.orders}
-            produkte={this.state.produkte}
-            onGoBack={() => this.setState({ view: "home" })}
-            onChat={(order) => this.setState({ chatOrder: order })}
+            <KurierView
+  user={this.state.user}
+  orders={this.state.orders}
+  produkte={this.state.produkte}
+  onGoBack={() => this.setState({ view: "home" })}
+  onChat={(order) => this.setState({ chatOrder: order })}
+  onOrderDelete={this.handleOrderDelete}
+  onOrderStatusUpdate={this.handleOrderStatusUpdate} // <----- Wichtig!
+/>
           />
         )}
         {this.state.view === "pässe" && this.state.user && (
