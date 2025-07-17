@@ -33,6 +33,7 @@ export default class ChatWindow extends React.Component {
   await updateDoc(doc(db, "orders", order.id), {
     chat: arrayUnion({
       user: user.username,
+      text: input, 
       ts: Date.now(),
     }),
   });
@@ -40,7 +41,7 @@ export default class ChatWindow extends React.Component {
   // <-- NEU: Notification auslösen! (WICHTIG)
   if (typeof onSendMessage === "function") {
     console.log("[ChatWindow] onSendMessage triggered"); // <--- WICHTIGER LOG!
-    await onSendMessage(order.id, input, user.id);
+    await onSendMessage(order.id, user.id);
   }
 
   this.setState({ input: "" });
