@@ -52,7 +52,7 @@ class ErrorBoundary extends React.Component {
 
 // --- NEU: sendTelegramNotification 100% robust und mit Log
 async function sendTelegramNotification(user, text) {
-   console.log("DEBUG: Notification wird gesendet an:", user, text);
+  console.log("DEBUG: Notification wird gesendet an:", user, text);
   if (!user?.telegramChatId) {
     console.log("[sendTelegramNotification] Keine ChatId für Telegram:", user);
     return;
@@ -180,10 +180,11 @@ export default class App extends React.Component {
       const price = await fetchBtcPriceEUR();
       this.setState({ btcPrice: price });
     }, 120000);
-      if (!localStorage.getItem("plug_updateinfo_seen_v2")) {
-    this.setState({ showUpdateModal: true });
-  }
-}
+
+    // <--- HIER war der Syntaxfehler! KORRIGIERT:
+    if (!localStorage.getItem("plug_updateinfo_seen_v2")) {
+      this.setState({ showUpdateModal: true });
+    }
   }
 
   componentWillUnmount() {
@@ -209,8 +210,6 @@ export default class App extends React.Component {
           !(user.btc_deposits || []).some((t) => t.txid === tx.txid)
       );
 
-
-      
       if (passendeTx) {
         const txBtc = passendeTx.value / 1e8;
         const eurValue = txBtc * btcPrice;
@@ -229,14 +228,12 @@ export default class App extends React.Component {
           openDeposit: { ...open, erledigt: true, txid: passendeTx.txid },
         });
         if (user.telegramChatId) {
-  await sendTelegramNotification(
-    user,
-    `💰 Deine Einzahlung war erfolgreich! Dein Guthaben wurde um <b>${eurValue.toFixed(2)} €</b> erhöht.`
-  );
-}
+          await sendTelegramNotification(
+            user,
+            `💰 Deine Einzahlung war erfolgreich! Dein Guthaben wurde um <b>${eurValue.toFixed(2)} €</b> erhöht.`
+          );
+        }
       }
-
-      
     }
   };
 
@@ -279,20 +276,19 @@ export default class App extends React.Component {
   };
 
   handleOrderStatusUpdate = async (orderId, status) => {
-  const orderRef = doc(db, "orders", orderId);
-  await updateDoc(orderRef, { status });
-  const orderSnap = await getDoc(orderRef);
-  const order = orderSnap.data();
-  const kunde = this.state.users.find((u) => u.username === order.kunde);
-  if (kunde?.telegramChatId) {
-    let msg = `🚚 Dein Bestellstatus wurde geändert: <b>${status.toUpperCase()}</b>`;
-    if (status === "abgeschlossen") {
-      msg = `✅ Deine Bestellung wurde <b>abgeschlossen</b>. Bitte bewerte jetzt deine Bestellung!`;
+    const orderRef = doc(db, "orders", orderId);
+    await updateDoc(orderRef, { status });
+    const orderSnap = await getDoc(orderRef);
+    const order = orderSnap.data();
+    const kunde = this.state.users.find((u) => u.username === order.kunde);
+    if (kunde?.telegramChatId) {
+      let msg = `🚚 Dein Bestellstatus wurde geändert: <b>${status.toUpperCase()}</b>`;
+      if (status === "abgeschlossen") {
+        msg = `✅ Deine Bestellung wurde <b>abgeschlossen</b>. Bitte bewerte jetzt deine Bestellung!`;
+      }
+      await sendTelegramNotification(kunde, msg);
     }
-    await sendTelegramNotification(kunde, msg);
-  }
-};
-
+  };
 
   handleOrderLocationUpdate = async (orderId, neuerStandort) => {
     const orderRef = doc(db, "orders", orderId);
@@ -330,13 +326,13 @@ export default class App extends React.Component {
   };
 
   handleLogin = (user) => {
-  this.setUserLiveListener(user);
-  this.setState({ 
-    user, 
-    view: "home", 
-    updateModalSeen: false
-  });
-};
+    this.setUserLiveListener(user);
+    this.setState({
+      user,
+      view: "home",
+      updateModalSeen: false,
+    });
+  };
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
@@ -530,7 +526,7 @@ export default class App extends React.Component {
                   }
                 `}
               </style>
-             <div
+              <div
                 style={{
                   position: "fixed",
                   top: 95,
@@ -595,16 +591,15 @@ export default class App extends React.Component {
               </div>
             </>
           )}
-    {this.state.showUpdateModal && (
-  <UpdateInfoModal
-    onClose={() => {
-      this.setState({ showUpdateModal: false });
-      localStorage.setItem("plug_updateinfo_seen_v2", "1"); // neue Version? -> "_v2"
-    }}
-  />
-)}
+        {this.state.showUpdateModal && (
+          <UpdateInfoModal
+            onClose={() => {
+              this.setState({ showUpdateModal: false });
+              localStorage.setItem("plug_updateinfo_seen_v2", "1"); // neue Version? -> "_v2"
+            }}
+          />
+        )}
         {/* ---- Rest wie gehabt ---- */}
-
         {this.state.chatOrder && (
           <ChatWindow
             user={this.state.user}
