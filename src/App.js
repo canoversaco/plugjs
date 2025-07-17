@@ -24,6 +24,7 @@ import UserInventory from "./components/UserInventory";
 import WalletModal from "./components/WalletModal";
 import LottoView from "./components/LottoView";
 import NotificationPopup from "./components/NotificationPopup";
+import UpdateInfoModal from "./components/UpdateInfoModal";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 
@@ -98,6 +99,8 @@ export default class App extends React.Component {
     showBroadcast: false,
     chatOrder: null,
     walletOpen: false,
+    showUpdateModal: false,
+    updateModalSeen: false,
     btcPrice: null,
     buyCryptoModalOpen: false,
     buyCryptoAmount: null,
@@ -322,9 +325,14 @@ if (user.telegramChatId) {
   };
 
   handleLogin = (user) => {
-    this.setUserLiveListener(user);
-    this.setState({ user, view: "home" });
-  };
+  this.setUserLiveListener(user);
+  this.setState({ 
+    user, 
+    view: "home", 
+    showUpdateModal: true,  // <--- zeigt das Modal
+    updateModalSeen: false
+  });
+};
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
@@ -583,7 +591,11 @@ if (user.telegramChatId) {
               </div>
             </>
           )}
-
+    {this.state.showUpdateModal && !this.state.updateModalSeen && (
+      <UpdateInfoModal
+        onClose={() => this.setState({ showUpdateModal: false, updateModalSeen: true })}
+          />
+      )}
         {/* ---- Rest wie gehabt ---- */}
 
         {this.state.chatOrder && (
