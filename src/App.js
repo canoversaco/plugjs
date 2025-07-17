@@ -728,7 +728,7 @@ export default class App extends React.Component {
   onOrderDelete={this.handleOrderDelete}
   onOrderStatusUpdate={this.handleOrderStatusUpdate} // <----- Wichtig!
 />
-          />
+          
         )}
         {this.state.view === "pässe" && this.state.user && (
           <PassPanel
