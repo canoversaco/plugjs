@@ -51,6 +51,7 @@ class ErrorBoundary extends React.Component {
 
 // --- NEU: sendTelegramNotification 100% robust und mit Log
 async function sendTelegramNotification(user, text) {
+   console.log("DEBUG: Notification wird gesendet an:", user, text);
   if (!user?.telegramChatId) {
     console.log("[sendTelegramNotification] Keine ChatId für Telegram:", user);
     return;
