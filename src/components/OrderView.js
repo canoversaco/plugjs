@@ -1,5 +1,3 @@
-// src/components/OrderView.js
-
 import React, { useRef, useEffect, useState } from "react";
 import "ol/ol.css";
 import Map from "ol/Map";
@@ -54,14 +52,12 @@ export default function OrderView({
     fetchKurs();
   }, []);
 
-  // Gratis-Produkte werden ignoriert beim Preis
   const warenkorbPreis = warenkorb.reduce((sum, item) => {
     const p = produkte.find((pr) => pr.id === item.produktId);
     if (item.gratis) return sum;
     return sum + (p?.preis || 0) * item.menge;
   }, 0);
 
-  // --- Pass Anzeige / Berechnung ---
   let aktiverPass = null;
   if (user?.pass && user.pass.gültigBis > Date.now()) aktiverPass = user.pass;
 
@@ -79,13 +75,11 @@ export default function OrderView({
     passRabatt = Math.min(passRabatt, passRabattÜbrig);
   }
 
-  // Rabattberechnung NUR bei Krypto & aktivem Pass
   let _rabatt = 0;
   if (orderZahlung === "krypto") {
     if (aktiverPass) {
       _rabatt = passRabatt;
     } else {
-      // Fallback: Standard-Krypto-Rabatt (falls kein Pass)
       if (warenkorbPreis <= 250) _rabatt = warenkorbPreis * 0.05;
       else _rabatt = warenkorbPreis * 0.1;
     }
@@ -100,7 +94,6 @@ export default function OrderView({
       ? (_endpreis / btcKurs).toFixed(6)
       : "…";
 
-  // Prüfe Bestand (auch für gratis Produkte)
   const notEnoughStock = warenkorb.some((item) => {
     const p = produkte.find((pr) => pr.id === item.produktId);
     return !p || p.bestand < item.menge;
@@ -206,6 +199,24 @@ export default function OrderView({
       );
       return;
     }
+
+    // ✅ Telegram Nachricht absenden
+    const message = encodeURIComponent(
+      `📦 Neue Bestellung von ${user?.username || "Unbekannt"}!\n\nProdukte:\n${warenkorb
+        .map((item) => {
+          const p = produkte.find((pr) => pr.id === item.produktId);
+          return `• ${item.menge} × ${p?.name || "?"}`;
+        })
+        .join("\n")}\n\nEndpreis: ${_endpreis.toFixed(
+        2
+      )} €\nZahlung: ${orderZahlung.toUpperCase()}`
+    );
+
+    fetch(
+      `https://api.telegram.org/bot<DEIN_BOT_TOKEN>/sendMessage?chat_id=<DEIN_CHAT_ID>&text=${message}`
+    );
+
+    // Bestellung senden
     onBestellungAbsenden({
       warenkorb,
       gesamt: _gesamt,
@@ -219,6 +230,7 @@ export default function OrderView({
       kryptoKurs: btcKurs,
     });
   };
+
 
   return (
     <div
