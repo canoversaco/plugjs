@@ -65,18 +65,25 @@ function handleMultiAddChange(field, value) {
   setMultiAdd((s) => ({ ...s, [field]: value }));
 }
 
-async function handleMultiAddSubmit() {
+handleMultiAddSubmit = async () => {
+  const { multiAdd } = this.state;
   const { basisname, varianten, bestand, kategorie, beschreibung, bildName } = multiAdd;
   if (!basisname || !varianten) {
-    setMultiAdd((s) => ({ ...s, error: "Basisname & Varianten erforderlich!" }));
+    this.setState(s => ({
+      multiAdd: { ...s.multiAdd, error: "Basisname & Varianten erforderlich!" }
+    }));
     return;
   }
   const variantArr = varianten.split(",").map(v => v.trim()).filter(Boolean);
   if (variantArr.length === 0) {
-    setMultiAdd((s) => ({ ...s, error: "Mindestens eine Variante eingeben." }));
+    this.setState(s => ({
+      multiAdd: { ...s.multiAdd, error: "Mindestens eine Variante eingeben." }
+    }));
     return;
   }
-  setMultiAdd((s) => ({ ...s, error: "", success: "" }));
+  this.setState(s => ({
+    multiAdd: { ...s.multiAdd, error: "", success: "" }
+  }));
   try {
     for (const variant of variantArr) {
       const [menge, preis] = variant.split("=").map(x => x.trim());
@@ -90,26 +97,31 @@ async function handleMultiAddSubmit() {
         kategorie,
       });
     }
-    ctx.fetchProdukte(); // Damit sofort aktualisiert
-    setMultiAdd({
-      basisname: "",
-      varianten: "",
-      bestand: "",
-      kategorie: "",
-      beschreibung: "",
-      bildName: "defaultBild",
-      error: "",
-      success: "Varianten hinzugefügt!",
+    this.fetchProdukte();
+    this.setState({
+      multiAdd: {
+        basisname: "",
+        varianten: "",
+        bestand: "",
+        kategorie: "",
+        beschreibung: "",
+        bildName: "defaultBild",
+        error: "",
+        success: "Varianten hinzugefügt!",
+      }
     });
   } catch (e) {
-    setMultiAdd((s) => ({ ...s, error: "Fehler beim Hinzufügen!" }));
+    this.setState(s => ({
+      multiAdd: { ...s.multiAdd, error: "Fehler beim Hinzufügen!" }
+    }));
   }
-}
+};
 
 
 // ---- MAIN COMPONENT ----
 export default class AdminView extends React.Component {
-  state = {
+  state =
+  {
     tab: "dashboard",
     produktEdit: null,
     produktForm: {
@@ -121,6 +133,17 @@ export default class AdminView extends React.Component {
       bildName: "defaultBild",
       kategorie: "",
     },
+
+    multiAdd: {
+  basisname: "",
+  varianten: "",
+  bestand: "",
+  kategorie: "",
+  beschreibung: "",
+  bildName: "defaultBild",
+  error: "",
+  success: ""
+},
     error: "",
     sortBy: "name",
     produktAddForm: {
@@ -319,6 +342,64 @@ try {
       produktAddForm: { ...s.produktAddForm, [field]: value },
     }));
   };
+
+  handleMultiAddChange = (field, value) => {
+  this.setState((s) => ({
+    multiAdd: { ...s.multiAdd, [field]: value }
+  }));
+};
+
+handleMultiAddSubmit = async () => {
+  const { multiAdd } = this.state;
+  const { basisname, varianten, bestand, kategorie, beschreibung, bildName } = multiAdd;
+  if (!basisname || !varianten) {
+    this.setState(s => ({
+      multiAdd: { ...s.multiAdd, error: "Basisname & Varianten erforderlich!" }
+    }));
+    return;
+  }
+  const variantArr = varianten.split(",").map(v => v.trim()).filter(Boolean);
+  if (variantArr.length === 0) {
+    this.setState(s => ({
+      multiAdd: { ...s.multiAdd, error: "Mindestens eine Variante eingeben." }
+    }));
+    return;
+  }
+  this.setState(s => ({
+    multiAdd: { ...s.multiAdd, error: "", success: "" }
+  }));
+  try {
+    for (const variant of variantArr) {
+      const [menge, preis] = variant.split("=").map(x => x.trim());
+      if (!menge || !preis || isNaN(Number(preis))) continue;
+      await addDoc(collection(db, "produkte"), {
+        name: `${basisname} ${menge}g`,
+        preis: Number(preis),
+        bestand: Number(bestand) || 0,
+        beschreibung,
+        bildName,
+        kategorie,
+      });
+    }
+    this.fetchProdukte();
+    this.setState({
+      multiAdd: {
+        basisname: "",
+        varianten: "",
+        bestand: "",
+        kategorie: "",
+        beschreibung: "",
+        bildName: "defaultBild",
+        error: "",
+        success: "Varianten hinzugefügt!",
+      }
+    });
+  } catch (e) {
+    this.setState(s => ({
+      multiAdd: { ...s.multiAdd, error: "Fehler beim Hinzufügen!" }
+    }));
+  }
+};
 
 handleAddProdukt = async () => {
   const { produktAddForm } = this.state;
@@ -1817,41 +1898,41 @@ function Tab(ctx) {
   <input
     type="text"
     value={multiAdd.basisname}
-    onChange={(e) => handleMultiAddChange("basisname", e.target.value)}
+    onChange={(e) => ctx.handleMultiAddChange("basisname", e.target.value)}
     placeholder="Basisname (z. B. Grün)"
     style={{ padding: 6, borderRadius: 7, width: 110 }}
   />
   <input
     type="text"
     value={multiAdd.varianten}
-    onChange={(e) => handleMultiAddChange("varianten", e.target.value)}
+    onChange={(e) => ctx.handleMultiAddChange("varianten", e.target.value)}
     placeholder="Varianten (z. B. 1=7,3=20,5=32)"
     style={{ padding: 6, borderRadius: 7, width: 180 }}
   />
   <input
     type="number"
     value={multiAdd.bestand}
-    onChange={(e) => handleMultiAddChange("bestand", e.target.value)}
+    onChange={(e) => ctx.handleMultiAddChange("bestand", e.target.value)}
     placeholder="Bestand"
     style={{ padding: 6, borderRadius: 7, width: 63 }}
   />
   <input
     type="text"
     value={multiAdd.kategorie}
-    onChange={(e) => handleMultiAddChange("kategorie", e.target.value)}
+    onChange={(e) => ctx.handleMultiAddChange("kategorie", e.target.value)}
     placeholder="Kategorie"
     style={{ padding: 6, borderRadius: 7, width: 87 }}
   />
   <input
     type="text"
     value={multiAdd.beschreibung}
-    onChange={(e) => handleMultiAddChange("beschreibung", e.target.value)}
+    onChange={(e) => ctx.handleMultiAddChange("beschreibung", e.target.value)}
     placeholder="Beschreibung"
     style={{ padding: 6, borderRadius: 7, width: 120 }}
   />
   <select
     value={multiAdd.bildName}
-    onChange={(e) => handleMultiAddChange("bildName", e.target.value)}
+    onChange={(e) => ctx.handleMultiAddChange("bildName", e.target.value)}
     style={{
       padding: 6,
       borderRadius: 7,
