@@ -49,17 +49,7 @@ const PERIODS = [
   { key: "all", label: "Allzeit", ms: null },
 ];
 
-// Multi-Add State (NEU)
-const [multiAdd, setMultiAdd] = React.useState({
-  basisname: "",
-  varianten: "", // z.B. 1=7,3=20,5=32
-  bestand: "",
-  kategorie: "",
-  beschreibung: "",
-  bildName: "defaultBild",
-  error: "",
-  success: ""
-});
+
 
 function handleMultiAddChange(field, value) {
   setMultiAdd((s) => ({ ...s, [field]: value }));
