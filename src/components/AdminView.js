@@ -48,6 +48,65 @@ const PERIODS = [
   { key: "30d", label: "1 Monat", ms: 30 * 24 * 3600 * 1000 },
   { key: "all", label: "Allzeit", ms: null },
 ];
+
+// Multi-Add State (NEU)
+const [multiAdd, setMultiAdd] = React.useState({
+  basisname: "",
+  varianten: "", // z.B. 1=7,3=20,5=32
+  bestand: "",
+  kategorie: "",
+  beschreibung: "",
+  bildName: "defaultBild",
+  error: "",
+  success: ""
+});
+
+function handleMultiAddChange(field, value) {
+  setMultiAdd((s) => ({ ...s, [field]: value }));
+}
+
+async function handleMultiAddSubmit() {
+  const { basisname, varianten, bestand, kategorie, beschreibung, bildName } = multiAdd;
+  if (!basisname || !varianten) {
+    setMultiAdd((s) => ({ ...s, error: "Basisname & Varianten erforderlich!" }));
+    return;
+  }
+  const variantArr = varianten.split(",").map(v => v.trim()).filter(Boolean);
+  if (variantArr.length === 0) {
+    setMultiAdd((s) => ({ ...s, error: "Mindestens eine Variante eingeben." }));
+    return;
+  }
+  setMultiAdd((s) => ({ ...s, error: "", success: "" }));
+  try {
+    for (const variant of variantArr) {
+      const [menge, preis] = variant.split("=").map(x => x.trim());
+      if (!menge || !preis || isNaN(Number(preis))) continue;
+      await addDoc(collection(db, "produkte"), {
+        name: `${basisname} ${menge}g`,
+        preis: Number(preis),
+        bestand: Number(bestand) || 0,
+        beschreibung,
+        bildName,
+        kategorie,
+      });
+    }
+    ctx.fetchProdukte(); // Damit sofort aktualisiert
+    setMultiAdd({
+      basisname: "",
+      varianten: "",
+      bestand: "",
+      kategorie: "",
+      beschreibung: "",
+      bildName: "defaultBild",
+      error: "",
+      success: "Varianten hinzugefügt!",
+    });
+  } catch (e) {
+    setMultiAdd((s) => ({ ...s, error: "Fehler beim Hinzufügen!" }));
+  }
+}
+
+
 // ---- MAIN COMPONENT ----
 export default class AdminView extends React.Component {
   state = {
@@ -1739,6 +1798,91 @@ function Tab(ctx) {
           )
         )}
       </div>
+{/* === Multi-Produkt-Hinzufügen === */}
+<div
+  style={{
+    marginTop: 18,
+    background: "#222",
+    borderRadius: 9,
+    padding: 10,
+    display: "flex",
+    gap: 7,
+    alignItems: "center",
+    flexWrap: "wrap"
+  }}
+>
+  <h4 style={{ fontWeight: 700, fontSize: 15, minWidth: 130, margin: 0 }}>
+    ➕ Varianten
+  </h4>
+  <input
+    type="text"
+    value={multiAdd.basisname}
+    onChange={(e) => handleMultiAddChange("basisname", e.target.value)}
+    placeholder="Basisname (z. B. Grün)"
+    style={{ padding: 6, borderRadius: 7, width: 110 }}
+  />
+  <input
+    type="text"
+    value={multiAdd.varianten}
+    onChange={(e) => handleMultiAddChange("varianten", e.target.value)}
+    placeholder="Varianten (z. B. 1=7,3=20,5=32)"
+    style={{ padding: 6, borderRadius: 7, width: 180 }}
+  />
+  <input
+    type="number"
+    value={multiAdd.bestand}
+    onChange={(e) => handleMultiAddChange("bestand", e.target.value)}
+    placeholder="Bestand"
+    style={{ padding: 6, borderRadius: 7, width: 63 }}
+  />
+  <input
+    type="text"
+    value={multiAdd.kategorie}
+    onChange={(e) => handleMultiAddChange("kategorie", e.target.value)}
+    placeholder="Kategorie"
+    style={{ padding: 6, borderRadius: 7, width: 87 }}
+  />
+  <input
+    type="text"
+    value={multiAdd.beschreibung}
+    onChange={(e) => handleMultiAddChange("beschreibung", e.target.value)}
+    placeholder="Beschreibung"
+    style={{ padding: 6, borderRadius: 7, width: 120 }}
+  />
+  <select
+    value={multiAdd.bildName}
+    onChange={(e) => handleMultiAddChange("bildName", e.target.value)}
+    style={{
+      padding: 6,
+      borderRadius: 7,
+      background: "#18181b",
+      color: "#fff",
+      border: 0,
+    }}
+  >
+    {Object.keys(images).map((k) => (
+      <option key={k} value={k}>{k}</option>
+    ))}
+  </select>
+  <button
+    onClick={handleMultiAddSubmit}
+    style={{
+      background: "#a3e635",
+      color: "#18181b",
+      border: 0,
+      borderRadius: 8,
+      padding: "6px 12px",
+      fontWeight: 700,
+      fontSize: 14,
+      cursor: "pointer",
+    }}
+  >
+    Alle hinzufügen
+  </button>
+  <div style={{ color: "#f87171", minWidth: 80 }}>{multiAdd.error}</div>
+  <div style={{ color: "#a3e635", minWidth: 80 }}>{multiAdd.success}</div>
+</div>
+
       {/* Produkt HINZUFÜGEN */}
       <div
         style={{
