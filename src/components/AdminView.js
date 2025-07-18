@@ -51,50 +51,8 @@ const PERIODS = [
 
 
 
-function handleMultiAddChange(field, value) {
-  setMultiAdd((s) => ({ ...s, [field]: value }));
-}
 
-handleMultiAddSubmit = async () => {
-  const { multiAdd } = this.state;
-  const { basisname, varianten, bestand, kategorie, beschreibung, bildName } = multiAdd;
-  if (!basisname || !varianten) {
-    this.setState(s => ({
-      multiAdd: { ...s.multiAdd, error: "Basisname & Varianten erforderlich!" }
-    }));
-    return;
-  }
-  const variantArr = varianten.split(",").map(v => v.trim()).filter(Boolean);
-  if (variantArr.length === 0) {
-    this.setState(s => ({
-      multiAdd: { ...s.multiAdd, error: "Mindestens eine Variante eingeben." }
-    }));
-    return;
-  }
-  this.setState(s => ({
-    multiAdd: { ...s.multiAdd, error: "", success: "" }
-  }));
-  try {
-    for (const variant of variantArr) {
-      const [menge, preis] = variant.split("=").map(x => x.trim());
-      if (!menge || !preis || isNaN(Number(preis))) continue;
-      await addDoc(collection(db, "produkte"), {
-        name: `${basisname} ${menge}g`,
-        preis: Number(preis),
-        bestand: Number(bestand) || 0,
-        beschreibung,
-        bildName,
-        kategorie,
-      });
-    }
-    this.fetchProdukte();
-    
-  } catch (e) {
-    this.setState(s => ({
-      multiAdd: { ...s.multiAdd, error: "Fehler beim Hinzufügen!" }
-    }));
-  }
-};
+
 
 
 // ---- MAIN COMPONENT ----
@@ -1601,6 +1559,7 @@ function Tab(ctx) {
     sortBy,
     produktAddForm,
     addError,
+    multiAdd,
   } = ctx.state;
   const sortedProdukte = [...produkte].sort((a, b) =>
     (a[sortBy] || "")
@@ -1925,7 +1884,7 @@ function Tab(ctx) {
     ))}
   </select>
   <button
-    onClick={handleMultiAddSubmit}
+    onClick={ctx.handleMultiAddSubmit}
     style={{
       background: "#a3e635",
       color: "#18181b",
