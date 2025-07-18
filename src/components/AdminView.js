@@ -98,18 +98,7 @@ handleMultiAddSubmit = async () => {
       });
     }
     this.fetchProdukte();
-    this.setState({
-      multiAdd: {
-        basisname: "",
-        varianten: "",
-        bestand: "",
-        kategorie: "",
-        beschreibung: "",
-        bildName: "defaultBild",
-        error: "",
-        success: "Varianten hinzugefügt!",
-      }
-    });
+    
   } catch (e) {
     this.setState(s => ({
       multiAdd: { ...s.multiAdd, error: "Fehler beim Hinzufügen!" }
