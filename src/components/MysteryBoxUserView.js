@@ -18,8 +18,8 @@ const soundCoin = "/sounds/coin.mp3";
 // Utility für Produktbild
 const BILD_URL = (produkt) =>
   produkt?.bildName
-    ? `/images/${produkt.bildName}.webp`
-    : "/images/default.webp";
+    ? `/images/${produkt.bildName}.jpg`
+    : "/images/default.jpg";
 
 // Utility für Sound abspielen
 const playSound = (src, volume = 1) => {
