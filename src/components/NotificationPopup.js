@@ -10,7 +10,7 @@ export default function NotificationPopup({ message, actionText, onAction, onClo
       transition={{ duration: 0.32, type: "spring" }}
       style={{
         position: "fixed",
-        top: 28,
+        top: 20,
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 9999,
@@ -19,17 +19,17 @@ export default function NotificationPopup({ message, actionText, onAction, onClo
         borderRadius: 13,
         fontWeight: 900,
         fontSize: 15.2,
-        padding: "10px 10px 10px 15px",
+        padding: "10px 12px",
         boxShadow: "0 6px 18px #38bdf829, 0 2px 8px #a3e63522",
         display: "flex",
         alignItems: "center",
         minWidth: 0,
-        maxWidth: "94vw",
+        maxWidth: "95vw",
         width: "auto",
         wordBreak: "break-word",
-        lineHeight: 1.35,
+        lineHeight: 1.32,
         minHeight: 0,
-        maxHeight: 70,
+        maxHeight: 90,
         overflow: "hidden",
         ...style,
       }}
@@ -37,16 +37,11 @@ export default function NotificationPopup({ message, actionText, onAction, onClo
       <span
         style={{
           flex: 1,
-          minWidth: 0,
           fontSize: 15.5,
           wordBreak: "break-word",
-          overflowWrap: "anywhere",
-          whiteSpace: "pre-line",
-          textOverflow: "ellipsis",
           overflow: "hidden",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
+          textOverflow: "ellipsis",
+          whiteSpace: "normal",
         }}
       >
         {message}
@@ -54,19 +49,19 @@ export default function NotificationPopup({ message, actionText, onAction, onClo
       {actionText && (
         <button
           style={{
-            marginLeft: 8,
+            marginLeft: 10,
             background: "#23262e",
             color: "#fff",
             border: 0,
             borderRadius: 8,
             fontWeight: 800,
             fontSize: 14.3,
-            padding: "7px 10px",
+            padding: "7px 12px",
             cursor: "pointer",
             transition: "background 0.16s",
             flexShrink: 0,
-            maxHeight: 34,
-            lineHeight: 1.05,
+            maxHeight: 36,
+            lineHeight: 1.12,
             display: "inline-block",
           }}
           onClick={onAction}
@@ -76,18 +71,17 @@ export default function NotificationPopup({ message, actionText, onAction, onClo
       )}
       <button
         style={{
-          marginLeft: 6,
+          marginLeft: 7,
           background: "none",
           border: "none",
           color: "#18181b",
-          fontSize: 21,
+          fontSize: 22,
           fontWeight: 900,
           cursor: "pointer",
           opacity: 0.7,
-          padding: "1px 5px",
+          padding: "2px 7px",
           flexShrink: 0,
           lineHeight: 1,
-          display: "inline-block",
         }}
         onClick={onClose}
         aria-label="Schließen"
