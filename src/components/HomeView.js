@@ -12,7 +12,7 @@ import {
   Boxes,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import NotificationPopup from "./NotificationPopup";
+import NotificationPopup from "./NotificationPopup"; // <--- Wichtig!
 
 function msToDHM(ms) {
   const t = Math.max(0, ms);
@@ -26,7 +26,7 @@ const ACTIONS = [
   {
     id: "menu",
     label: "Menü",
-    icon: <ShoppingCart size={30} />,
+    icon: <ShoppingCart size={26} />,
     color: "#18181b",
     bg: "linear-gradient(133deg,#a3e635 85%,#38bdf855 100%)",
     action: "onGotoMenu",
@@ -34,7 +34,7 @@ const ACTIONS = [
   {
     id: "orders",
     label: "Bestellungen",
-    icon: <Package size={30} />,
+    icon: <Package size={26} />,
     color: "#fff",
     bg: "linear-gradient(135deg,#38bdf8 85%,#a3e63533 100%)",
     action: "onGotoOrders",
@@ -42,7 +42,7 @@ const ACTIONS = [
   {
     id: "passes",
     label: "Pässe kaufen",
-    icon: <Ticket size={30} />,
+    icon: <Ticket size={25} />,
     color: "#fff",
     bg: "linear-gradient(135deg,#a3e635 50%,#38bdf8bb 100%)",
     action: "onGotoPass",
@@ -59,7 +59,7 @@ const ACTIONS = [
   {
     id: "mystery",
     label: "Mystery Boxen",
-    icon: <Gift size={32} />,
+    icon: <Gift size={27} />,
     color: "#fff",
     bg: "linear-gradient(120deg,#f59e42 65%,#a3e635 120%)",
     border: "2px solid #f59e42",
@@ -69,7 +69,7 @@ const ACTIONS = [
   {
     id: "inventar",
     label: "Inventar",
-    icon: <Boxes size={30} />,
+    icon: <Boxes size={26} />,
     color: "#fff",
     bg: "linear-gradient(120deg,#38bdf8 75%,#a3e63566 100%)",
     border: "2px solid #38bdf8",
@@ -78,7 +78,7 @@ const ACTIONS = [
   {
     id: "crypto",
     label: "Guthaben aufladen",
-    icon: <Bitcoin size={29} />,
+    icon: <Bitcoin size={25} />,
     color: "#a3e635",
     bg: "linear-gradient(127deg,#18181b 65%,#a3e63555 100%)",
     border: "2px solid #a3e635",
@@ -87,7 +87,7 @@ const ACTIONS = [
   {
     id: "admin",
     label: "Admin Panel",
-    icon: <UserCog size={28} />,
+    icon: <UserCog size={24} />,
     color: "#fff",
     bg: "linear-gradient(122deg,#18181b 60%,#38bdf877 100%)",
     border: "2px solid #38bdf8",
@@ -97,7 +97,7 @@ const ACTIONS = [
   {
     id: "kurier",
     label: "Kurier Panel",
-    icon: <Truck size={28} />,
+    icon: <Truck size={24} />,
     color: "#fff",
     bg: "linear-gradient(122deg,#18181b 60%,#38bdf877 100%)",
     border: "2px solid #38bdf8",
@@ -107,7 +107,7 @@ const ACTIONS = [
   {
     id: "logout",
     label: "Abmelden",
-    icon: <LogOut size={29} />,
+    icon: <LogOut size={25} />,
     color: "#fff",
     bg: "linear-gradient(133deg,#f87171 75%,#18181b 100%)",
     action: "onLogout",
@@ -121,7 +121,7 @@ const DEMO_BROADCASTS = [
   },
   {
     id: 2,
-    text: "🛒 Schau dir die neuen Wochen-/Monatspässe an und fang an zu sparen!",
+    text: "🛒 Schaue dir die neuen Wochen-/Monatspässe an und fange an zu sparen!",
   },
   {
     id: 3,
@@ -153,6 +153,7 @@ export default function HomeView({
   const removeBroadcast = (id) =>
     setBroadcasts((prev) => prev.filter((b) => b.id !== id));
 
+  // Aktiver Pass
   const aktiverPass =
     user?.pass && user.pass.gültigBis && user.pass.gültigBis > Date.now()
       ? user.pass
@@ -161,6 +162,7 @@ export default function HomeView({
   const rabattLimit =
     (aktiverPass?.maxRabatt ?? aktiverPass?.gesparlimit ?? 0) - gespart;
 
+  // Grid-Layout für Aktionen
   const role = user.rolle || user.role;
   const actionGrid = ACTIONS.filter(
     (a) =>
@@ -169,6 +171,7 @@ export default function HomeView({
       (a.role === "kurier" && (role === "kurier" || role === "admin"))
   );
 
+  // Action Handler zuordnen
   const handleAction = (action) => {
     switch (action) {
       case "onGotoMenu":
@@ -196,6 +199,7 @@ export default function HomeView({
     }
   };
 
+  // --- Notification für offene Bewertung + Telegram direkt als Popup (optimiert für Mobile) ---
   useEffect(() => {
     if (
       user &&
@@ -235,36 +239,47 @@ export default function HomeView({
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at 35% 40%, #23292F 67%, #15191c 100%)",
+        background:
+          "radial-gradient(circle at 35% 40%, #222931 63%, #191e24 100%)",
         fontFamily: "'Inter',sans-serif",
         padding: 0,
         margin: 0,
         overflow: "auto",
-        WebkitTapHighlightColor: "transparent",
       }}
     >
-      {/* Notification Popup - leicht mittiger */}
+      {/* Notification Popup - angepasst für Mobile */}
       {notification && (
-        <div style={{ position: "fixed", left: 0, right: 0, top: 44, zIndex: 5000 }}>
-          <NotificationPopup
-            message={notification.message}
-            actionText={notification.actionText}
-            onAction={notification.onAction}
-            onClose={() => setNotification(null)}
-            style={{ maxWidth: 340, margin: "0 auto" }}
-          />
+        <div
+          style={{
+            position: "fixed",
+            top: "14vh",
+            left: 0,
+            right: 0,
+            zIndex: 2222,
+            display: "flex",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 350, pointerEvents: "all" }}>
+            <NotificationPopup
+              message={notification.message}
+              actionText={notification.actionText}
+              onAction={notification.onAction}
+              onClose={() => setNotification(null)}
+              style={{
+                fontSize: 16,
+                borderRadius: 16,
+                boxShadow: "0 2px 22px #0007",
+                padding: 20,
+              }}
+            />
+          </div>
         </div>
       )}
 
-      {/* Wallet unten rechts für Mobile */}
-      <div
-        style={{
-          position: "fixed",
-          right: 18,
-          bottom: 20,
-          zIndex: 90,
-        }}
-      >
+      {/* Wallet oben rechts */}
+      <div style={{ position: "fixed", right: 32, top: 32, zIndex: 80 }}>
         <button
           onClick={onWalletClick}
           style={{
@@ -272,42 +287,35 @@ export default function HomeView({
             color: "#a3e635",
             border: "2px solid #23262e",
             borderRadius: "50%",
-            padding: 15,
+            padding: 13,
             fontWeight: 900,
-            fontSize: 32,
+            fontSize: 26,
             cursor: "pointer",
-            boxShadow: "0 2px 18px #38bdf844, 0 2px 12px #0006",
+            boxShadow: "0 2px 12px #38bdf844, 0 2px 10px #0006",
             transition: "background 0.12s",
-            minWidth: 54,
-            minHeight: 54,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
           }}
           title="Wallet öffnen"
         >
-          <Wallet size={32} />
+          <Wallet size={26} />
         </button>
       </div>
       {!user.telegramChatId ? (
-        <div style={{ marginTop: 10, marginBottom: 7, textAlign: "center" }}>
+        <div style={{ marginTop: 7, marginBottom: 7 }}>
           <button
             style={{
               background: "#229ED9",
               color: "#fff",
               border: 0,
-              borderRadius: 10,
-              padding: "12px 19px",
+              borderRadius: 7,
+              padding: "9px 16px",
               fontWeight: 800,
-              fontSize: 18,
+              fontSize: 15.5,
               cursor: "pointer",
-              boxShadow: "0 2px 12px #229ED922",
-              display: "inline-flex",
+              boxShadow: "0 2px 10px #229ED922",
+              display: "flex",
               alignItems: "center",
-              gap: 8,
-              letterSpacing: 0.10,
-              width: "90%",
-              maxWidth: 340,
+              gap: 7,
+              letterSpacing: 0.09,
             }}
             onClick={() => {
               const tgBotName = "PlugApp_bot";
@@ -315,22 +323,21 @@ export default function HomeView({
               window.open(url, "_blank");
             }}
           >
-            <span style={{ fontSize: 23 }}>📲</span>
+            <span style={{ fontSize: 21 }}>📲</span>
             Telegram-Benachrichtigungen aktivieren
           </button>
-          <div style={{ fontSize: 13.5, color: "#229ED9", marginTop: 2 }}>
+          <div style={{ fontSize: 12.5, color: "#229ED9", marginTop: 2 }}>
             Erhalte wichtige Benachrichtigungen direkt auf Telegram!
           </div>
         </div>
       ) : (
         <div
           style={{
-            marginTop: 10,
+            marginTop: 7,
             marginBottom: 7,
             color: "#229ED9",
             fontWeight: 700,
-            fontSize: 15,
-            textAlign: "center",
+            fontSize: 14,
           }}
         >
           ✅ Telegram Benachrichtigungen aktiviert!
@@ -338,36 +345,37 @@ export default function HomeView({
       )}
       <div
         style={{
-          maxWidth: 420,
+          maxWidth: 630,
           margin: "0 auto",
-          padding: "0 4vw",
-          paddingTop: 42,
-          paddingBottom: 54,
+          padding: "0 10px",
+          paddingTop: 74,
+          paddingBottom: 42,
         }}
       >
         {/* User Header */}
         <div
           style={{
             display: "flex",
-            gap: 12,
+            gap: 18,
             alignItems: "center",
-            marginBottom: 13,
+            marginBottom: 15,
             flexWrap: "wrap",
           }}
         >
           <div
             style={{
-              background: "linear-gradient(135deg,#38bdf8cc 60%,#a3e63577 100%)",
+              background:
+                "linear-gradient(135deg,#38bdf8cc 60%,#a3e63577 100%)",
               borderRadius: "50%",
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 900,
-              fontSize: 22,
+              fontSize: 26,
               color: "#fff",
-              boxShadow: "0 2.5px 14px #38bdf822",
+              boxShadow: "0 3px 17px #38bdf822",
               userSelect: "none",
             }}
           >
@@ -376,7 +384,7 @@ export default function HomeView({
           <div>
             <div
               style={{
-                fontSize: 17,
+                fontSize: 19,
                 fontWeight: 900,
                 color: "#fff",
                 letterSpacing: 1,
@@ -388,7 +396,7 @@ export default function HomeView({
               style={{
                 color: "#a3e635",
                 fontWeight: 700,
-                fontSize: 14.5,
+                fontSize: 15.5,
                 marginTop: 2,
               }}
             >
@@ -405,25 +413,25 @@ export default function HomeView({
           <div
             style={{
               background: "linear-gradient(105deg,#24292e 80%,#a3e63533 100%)",
-              borderRadius: 12,
-              padding: "11px 13px 10px 13px",
+              borderRadius: 13,
+              padding: "13px 16px 11px 16px",
               boxShadow: "0 4px 13px #a3e63533, 0 2px 8px #38bdf822",
-              marginBottom: 11,
+              marginBottom: 15,
               color: "#fff",
-              fontSize: 13.2,
+              fontSize: 14.2,
               border: "2px solid #a3e63533",
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: 14,
               flexWrap: "wrap",
             }}
           >
-            <Ticket size={22} style={{ color: "#a3e635", marginRight: 6 }} />
-            <div style={{ flex: 1, minWidth: 100 }}>
+            <Ticket size={27} style={{ color: "#a3e635", marginRight: 7 }} />
+            <div style={{ flex: 1, minWidth: 130 }}>
               <div
                 style={{
                   fontWeight: 800,
-                  fontSize: 14.5,
+                  fontSize: 15.5,
                   color: "#a3e635",
                   marginBottom: 1,
                 }}
@@ -431,7 +439,7 @@ export default function HomeView({
                 {aktiverPass.name}
               </div>
               <div
-                style={{ color: "#38bdf8", fontWeight: 700, fontSize: 12.5 }}
+                style={{ color: "#38bdf8", fontWeight: 700, fontSize: 13.5 }}
               >
                 {aktiverPass.rabatt}% Rabatt&nbsp; • &nbsp;
                 <span style={{ color: "#a3e635", fontWeight: 900 }}>
@@ -439,7 +447,7 @@ export default function HomeView({
                 </span>{" "}
                 gültig
               </div>
-              <div style={{ color: "#fff", fontSize: 11.7, marginTop: 2 }}>
+              <div style={{ color: "#fff", fontSize: 13.2, marginTop: 2 }}>
                 Max:{" "}
                 <span style={{ color: "#38bdf8", fontWeight: 700 }}>
                   {(aktiverPass.maxRabatt ?? 0).toFixed(2)} €
@@ -462,7 +470,7 @@ export default function HomeView({
           {broadcasts.map((b, i) => (
             <motion.div
               key={b.id}
-              initial={{ x: 45, opacity: 0, scale: 0.94 }}
+              initial={{ x: 60, opacity: 0, scale: 0.92 }}
               animate={{
                 x: 0,
                 opacity: 1,
@@ -480,7 +488,7 @@ export default function HomeView({
                         "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
                       ],
               }}
-              exit={{ x: 40, opacity: 0, scale: 0.92 }}
+              exit={{ x: 55, opacity: 0, scale: 0.85 }}
               transition={{
                 duration: 0.35,
                 type: "spring",
@@ -491,12 +499,12 @@ export default function HomeView({
                 },
               }}
               style={{
-                borderRadius: 11,
-                padding: "9px 13px",
-                fontSize: 14.2,
+                borderRadius: 12,
+                padding: "10px 15px",
+                fontSize: 15.5,
                 fontWeight: 700,
-                marginBottom: 7,
-                boxShadow: "0 1.5px 7px #23262e44",
+                marginBottom: 9,
+                boxShadow: "0 1.5px 8px #23262e44",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -510,9 +518,9 @@ export default function HomeView({
                   background: "none",
                   border: "none",
                   color: "#fff",
-                  fontSize: 18,
+                  fontSize: 19,
                   fontWeight: 800,
-                  marginLeft: 10,
+                  marginLeft: 15,
                   cursor: "pointer",
                   lineHeight: "1.3",
                   transition: "color 0.14s",
@@ -530,10 +538,9 @@ export default function HomeView({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: 12,
-            marginTop: 6,
-            width: "100%",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 13,
+            marginTop: 7,
           }}
         >
           {actionGrid.map((a) =>
@@ -541,7 +548,7 @@ export default function HomeView({
               <motion.button
                 key={a.id}
                 onClick={handleAction(a.action)}
-                whileHover={{ scale: 1.07, rotate: [0, -3, 3, 0] }}
+                whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
                 animate={{
                   boxShadow: [
                     "0 0px 16px #f59e4234, 0 2px 12px #a3e63521",
@@ -560,24 +567,24 @@ export default function HomeView({
                   background: a.bg,
                   color: a.color,
                   border: a.border || "none",
-                  borderRadius: 13,
+                  borderRadius: 14,
                   fontWeight: 800,
-                  fontSize: 16.3,
-                  padding: "20px 0 12px 0",
+                  fontSize: 15.5,
+                  padding: "19px 0 11px 0",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
+                  gap: 9,
                   transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
-                  minHeight: 68,
+                  minHeight: 74,
                   position: "relative",
                   userSelect: "none",
                 }}
               >
                 <div>{a.icon}</div>
-                <div style={{ letterSpacing: 0.07 }}>{a.label}</div>
+                <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: [1, 1.13, 1] }}
@@ -588,10 +595,10 @@ export default function HomeView({
                   }}
                   style={{
                     position: "absolute",
-                    right: 11,
-                    top: 11,
+                    right: 13,
+                    top: 12,
                     color: "#fff8",
-                    fontSize: 17,
+                    fontSize: 19,
                     pointerEvents: "none",
                   }}
                 >
@@ -606,25 +613,25 @@ export default function HomeView({
                   background: a.bg,
                   color: a.color,
                   border: a.border || "none",
-                  borderRadius: 13,
+                  borderRadius: 14,
                   boxShadow: "0 2px 10px #0001",
                   fontWeight: 800,
-                  fontSize: 16.3,
-                  padding: "20px 0 12px 0",
+                  fontSize: 15.5,
+                  padding: "19px 0 11px 0",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
+                  gap: 9,
                   transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
-                  minHeight: 68,
+                  minHeight: 74,
                   position: "relative",
                   userSelect: "none",
                 }}
               >
                 <div>{a.icon}</div>
-                <div style={{ letterSpacing: 0.07 }}>{a.label}</div>
+                <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
               </button>
             )
           )}
