@@ -86,6 +86,9 @@ async function sendTelegramNotification(user, text) {
     console.error("[sendTelegramNotification] Fehler beim Senden:", e);
   }
 }
+// ---- DAS IST NEU! ----
+window.sendTelegramNotification = sendTelegramNotification;
+// ---- ENDE NEU ----
 
 export default class App extends React.Component {
   state = {
@@ -720,15 +723,14 @@ export default class App extends React.Component {
         )}
         {this.state.view === "kurier" && this.state.user && (
           <KurierView
-  user={this.state.user}
-  orders={this.state.orders}
-  produkte={this.state.produkte}
-  onGoBack={() => this.setState({ view: "home" })}
-  onChat={(order) => this.setState({ chatOrder: order })}
-  onOrderDelete={this.handleOrderDelete}
-  onOrderStatusUpdate={this.handleOrderStatusUpdate} // <----- Wichtig!
-/>
-          
+            user={this.state.user}
+            orders={this.state.orders}
+            produkte={this.state.produkte}
+            onGoBack={() => this.setState({ view: "home" })}
+            onChat={(order) => this.setState({ chatOrder: order })}
+            onOrderDelete={this.handleOrderDelete}
+            onOrderStatusUpdate={this.handleOrderStatusUpdate}
+          />
         )}
         {this.state.view === "pässe" && this.state.user && (
           <PassPanel
@@ -764,8 +766,8 @@ export default class App extends React.Component {
             onProduktUpdate={this.produktUpdaten}
             onOrderStatusUpdate={this.handleOrderStatusUpdate}
             onOrderDelete={this.handleOrderDelete}
-            onOrderUpdate={this.handleOrderUpdate} // z.B. status UND notiz zusammen
-            onOrderLocationUpdate={this.handleOrderLocationUpdate} // <--- HIER!
+            onOrderUpdate={this.handleOrderUpdate}
+            onOrderLocationUpdate={this.handleOrderLocationUpdate}
           />
         )}
         {/* Fallback */}
