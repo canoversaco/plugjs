@@ -12,7 +12,7 @@ import {
   Boxes,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import NotificationPopup from "./NotificationPopup"; // <--- Wichtig!
+import NotificationPopup from "./NotificationPopup";
 
 // Hilfsfunktion für Restzeit
 function msToDHM(ms) {
@@ -178,7 +178,6 @@ export default function HomeView({
       (a.role === "kurier" && (role === "kurier" || role === "admin"))
   );
 
-  // Action Handler zuordnen
   const handleAction = (action) => {
     switch (action) {
       case "onGotoMenu":
@@ -206,7 +205,7 @@ export default function HomeView({
     }
   };
 
-  // --- Notification für offene Bewertung direkt auf HomeView (Popup) ---
+  // Notification für offene Bewertung oder Telegram-Aktivierung (nach jedem Login)
   useEffect(() => {
     if (
       user &&
@@ -225,6 +224,18 @@ export default function HomeView({
         onAction: () => {
           setNotification(null);
           if (typeof onGotoOrders === "function") onGotoOrders();
+        },
+      });
+    } else if (user && !user.telegramChatId) {
+      setNotification({
+        message:
+          "Erhalte alle wichtigen Infos direkt per Telegram! Willst du Benachrichtigungen aktivieren?",
+        actionText: "Telegram verbinden",
+        onAction: () => {
+          setNotification(null);
+          const tgBotName = "PlugApp_bot";
+          const url = `https://t.me/${tgBotName}?start=plug_${user.id}`;
+          window.open(url, "_blank");
         },
       });
     }
@@ -292,7 +303,6 @@ export default function HomeView({
               letterSpacing: 0.09,
             }}
             onClick={() => {
-              // Telegram-Username deines Bots:
               const tgBotName = "PlugApp_bot";
               const url = `https://t.me/${tgBotName}?start=plug_${user.id}`;
               window.open(url, "_blank");
