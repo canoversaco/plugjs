@@ -99,38 +99,51 @@ export default class KundeView extends React.Component {
     changeConfirmLoading: null, // ID der Bestellung, die gerade verarbeitet wird
     showBewertungPopup: false,
     pendingOrderId: null, // für Bewertung
-    dismissedForOrderId: null, // Verhindert ständiges Wiederkommen!
   };
 
   componentDidMount() {
-    this.checkOpenBewertung(this.props);
+    this.checkOpenBewertung(this.props, true);
   }
   componentDidUpdate(prevProps) {
-    // Prüfe immer, wenn sich Orders oder User ändern
     if (
       prevProps.orders !== this.props.orders ||
       prevProps.user !== this.props.user
     ) {
-      this.checkOpenBewertung(this.props);
+      this.checkOpenBewertung(this.props, false);
     }
   }
 
-  checkOpenBewertung(props) {
+  // --- Bewertungs-Popup-Logik ---
+  checkOpenBewertung(props, forceShow) {
     const { user, orders } = props;
-    // Finde abgeschlossene Bestellung ohne Bewertung, die NICHT dismissed ist
+    if (!user || !orders) return;
+
     const offeneOrder = orders?.find(
       (o) =>
         o.kunde === user.username &&
         o.status === "abgeschlossen" &&
-        !o.rating &&
-        o.id !== this.state.dismissedForOrderId
+        !o.rating
     );
+
     if (offeneOrder) {
-      this.setState({
-        showBewertungPopup: true,
-        pendingOrderId: offeneOrder.id,
-      });
+      const flagKey = `bewertungPopup_${user.username}_${offeneOrder.id}`;
+      const alreadyShown = sessionStorage.getItem(flagKey);
+
+      // Beim ersten Mount (direkt nach Login): forceShow=true → Popup zeigen, egal ob bereits vorher geladen
+      if (!alreadyShown || forceShow) {
+        this.setState({
+          showBewertungPopup: true,
+          pendingOrderId: offeneOrder.id,
+        });
+        sessionStorage.setItem(flagKey, "1");
+      } else {
+        this.setState({
+          showBewertungPopup: false,
+          pendingOrderId: offeneOrder.id,
+        });
+      }
     } else {
+      // Keine offene Bewertung, also auch kein Flag
       this.setState({
         showBewertungPopup: false,
         pendingOrderId: null,
@@ -144,16 +157,14 @@ export default class KundeView extends React.Component {
       ratings: { service: 5, wartezeit: 5, qualitaet: 5 },
       error: "",
       showBewertungPopup: false,
-      dismissedForOrderId: null,
     });
   }
 
   handleDismissPopup() {
     this.setState({
       showBewertungPopup: false,
-      // Merke, für welche Order dismissed wurde:
-      dismissedForOrderId: this.state.pendingOrderId,
     });
+    // Flag bleibt für diese Order in dieser Session gesetzt!
   }
 
   async handleRate(orderId) {
@@ -188,7 +199,6 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: order.id });
     const { changeRequest = {} } = order;
     try {
-      // Preis neu berechnen
       let newWarenkorb = changeRequest.newWarenkorb || order.warenkorb;
       let endpreis = 0;
       if (Array.isArray(newWarenkorb) && this.props.produkte) {
@@ -203,7 +213,6 @@ export default class KundeView extends React.Component {
         changeRequest: null,
       });
 
-      // Telegram-Benachrichtigung
       const { user } = this.props;
       notifyTelegram(
         user,
@@ -217,7 +226,6 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: null });
   }
 
-  // Ablehnen der Änderung
   async handleDeclineChange(order) {
     this.setState({ changeConfirmLoading: order.id });
     try {
@@ -226,7 +234,6 @@ export default class KundeView extends React.Component {
         status: "storniert",
       });
 
-      // Telegram-Benachrichtigung
       const { user } = this.props;
       notifyTelegram(
         user,
