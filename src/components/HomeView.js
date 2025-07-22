@@ -14,7 +14,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import NotificationPopup from "./NotificationPopup";
 
-// Hilfsfunktion für Restzeit
 function msToDHM(ms) {
   const t = Math.max(0, ms);
   const days = Math.floor(t / (1000 * 60 * 60 * 24));
@@ -23,12 +22,11 @@ function msToDHM(ms) {
   return `${days > 0 ? days + "d " : ""}${hours}h ${mins}m`;
 }
 
-// Modernere Card/Tile-Struktur für Aktionen!
 const ACTIONS = [
   {
     id: "menu",
     label: "Menü",
-    icon: <ShoppingCart size={26} />,
+    icon: <ShoppingCart size={30} />,
     color: "#18181b",
     bg: "linear-gradient(133deg,#a3e635 85%,#38bdf855 100%)",
     action: "onGotoMenu",
@@ -36,7 +34,7 @@ const ACTIONS = [
   {
     id: "orders",
     label: "Bestellungen",
-    icon: <Package size={26} />,
+    icon: <Package size={30} />,
     color: "#fff",
     bg: "linear-gradient(135deg,#38bdf8 85%,#a3e63533 100%)",
     action: "onGotoOrders",
@@ -44,12 +42,11 @@ const ACTIONS = [
   {
     id: "passes",
     label: "Pässe kaufen",
-    icon: <Ticket size={25} />,
+    icon: <Ticket size={30} />,
     color: "#fff",
     bg: "linear-gradient(135deg,#a3e635 50%,#38bdf8bb 100%)",
     action: "onGotoPass",
   },
-  // --- LOTTO BUTTON HIER ---
   {
     id: "lotto",
     label: "Lotto",
@@ -59,32 +56,29 @@ const ACTIONS = [
     border: "2px solid #38bdf8",
     action: "onGotoLotto",
   },
-  // --- MYSTERY BOXEN BUTTON (NEU) ---
   {
     id: "mystery",
     label: "Mystery Boxen",
-    icon: <Gift size={27} />,
+    icon: <Gift size={32} />,
     color: "#fff",
     bg: "linear-gradient(120deg,#f59e42 65%,#a3e635 120%)",
     border: "2px solid #f59e42",
     action: "onGotoMysteryBoxen",
     animate: true,
   },
-  // --- INVENTAR BUTTON (NEU) ---
   {
     id: "inventar",
     label: "Inventar",
-    icon: <Boxes size={26} />,
+    icon: <Boxes size={30} />,
     color: "#fff",
     bg: "linear-gradient(120deg,#38bdf8 75%,#a3e63566 100%)",
     border: "2px solid #38bdf8",
     action: "onGotoInventar",
   },
-  // -------------------------
   {
     id: "crypto",
     label: "Guthaben aufladen",
-    icon: <Bitcoin size={25} />,
+    icon: <Bitcoin size={29} />,
     color: "#a3e635",
     bg: "linear-gradient(127deg,#18181b 65%,#a3e63555 100%)",
     border: "2px solid #a3e635",
@@ -93,7 +87,7 @@ const ACTIONS = [
   {
     id: "admin",
     label: "Admin Panel",
-    icon: <UserCog size={24} />,
+    icon: <UserCog size={28} />,
     color: "#fff",
     bg: "linear-gradient(122deg,#18181b 60%,#38bdf877 100%)",
     border: "2px solid #38bdf8",
@@ -103,7 +97,7 @@ const ACTIONS = [
   {
     id: "kurier",
     label: "Kurier Panel",
-    icon: <Truck size={24} />,
+    icon: <Truck size={28} />,
     color: "#fff",
     bg: "linear-gradient(122deg,#18181b 60%,#38bdf877 100%)",
     border: "2px solid #38bdf8",
@@ -113,14 +107,13 @@ const ACTIONS = [
   {
     id: "logout",
     label: "Abmelden",
-    icon: <LogOut size={25} />,
+    icon: <LogOut size={29} />,
     color: "#fff",
     bg: "linear-gradient(133deg,#f87171 75%,#18181b 100%)",
     action: "onLogout",
   },
 ];
 
-// BROADCAST Demo
 const DEMO_BROADCASTS = [
   {
     id: 1,
@@ -128,7 +121,7 @@ const DEMO_BROADCASTS = [
   },
   {
     id: 2,
-    text: "🛒 Schaue dir die neuen Wochen-/Monatspässe an und fange an zu sparen!",
+    text: "🛒 Schau dir die neuen Wochen-/Monatspässe an und fang an zu sparen!",
   },
   {
     id: 3,
@@ -160,7 +153,6 @@ export default function HomeView({
   const removeBroadcast = (id) =>
     setBroadcasts((prev) => prev.filter((b) => b.id !== id));
 
-  // Aktiver Pass
   const aktiverPass =
     user?.pass && user.pass.gültigBis && user.pass.gültigBis > Date.now()
       ? user.pass
@@ -169,7 +161,6 @@ export default function HomeView({
   const rabattLimit =
     (aktiverPass?.maxRabatt ?? aktiverPass?.gesparlimit ?? 0) - gespart;
 
-  // Grid-Layout für Aktionen
   const role = user.rolle || user.role;
   const actionGrid = ACTIONS.filter(
     (a) =>
@@ -205,7 +196,6 @@ export default function HomeView({
     }
   };
 
-  // Notification für offene Bewertung oder Telegram-Aktivierung (nach jedem Login)
   useEffect(() => {
     if (
       user &&
@@ -245,26 +235,36 @@ export default function HomeView({
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "radial-gradient(circle at 35% 40%, #222931 63%, #191e24 100%)",
+        background: "radial-gradient(circle at 35% 40%, #23292F 67%, #15191c 100%)",
         fontFamily: "'Inter',sans-serif",
         padding: 0,
         margin: 0,
         overflow: "auto",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
-      {/* Notification Popup */}
+      {/* Notification Popup - leicht mittiger */}
       {notification && (
-        <NotificationPopup
-          message={notification.message}
-          actionText={notification.actionText}
-          onAction={notification.onAction}
-          onClose={() => setNotification(null)}
-        />
+        <div style={{ position: "fixed", left: 0, right: 0, top: 44, zIndex: 5000 }}>
+          <NotificationPopup
+            message={notification.message}
+            actionText={notification.actionText}
+            onAction={notification.onAction}
+            onClose={() => setNotification(null)}
+            style={{ maxWidth: 340, margin: "0 auto" }}
+          />
+        </div>
       )}
 
-      {/* Wallet oben rechts */}
-      <div style={{ position: "fixed", right: 32, top: 32, zIndex: 80 }}>
+      {/* Wallet unten rechts für Mobile */}
+      <div
+        style={{
+          position: "fixed",
+          right: 18,
+          bottom: 20,
+          zIndex: 90,
+        }}
+      >
         <button
           onClick={onWalletClick}
           style={{
@@ -272,35 +272,42 @@ export default function HomeView({
             color: "#a3e635",
             border: "2px solid #23262e",
             borderRadius: "50%",
-            padding: 13,
+            padding: 15,
             fontWeight: 900,
-            fontSize: 26,
+            fontSize: 32,
             cursor: "pointer",
-            boxShadow: "0 2px 12px #38bdf844, 0 2px 10px #0006",
+            boxShadow: "0 2px 18px #38bdf844, 0 2px 12px #0006",
             transition: "background 0.12s",
+            minWidth: 54,
+            minHeight: 54,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
           title="Wallet öffnen"
         >
-          <Wallet size={26} />
+          <Wallet size={32} />
         </button>
       </div>
       {!user.telegramChatId ? (
-        <div style={{ marginTop: 7, marginBottom: 7 }}>
+        <div style={{ marginTop: 10, marginBottom: 7, textAlign: "center" }}>
           <button
             style={{
               background: "#229ED9",
               color: "#fff",
               border: 0,
-              borderRadius: 7,
-              padding: "9px 16px",
+              borderRadius: 10,
+              padding: "12px 19px",
               fontWeight: 800,
-              fontSize: 15.5,
+              fontSize: 18,
               cursor: "pointer",
-              boxShadow: "0 2px 10px #229ED922",
-              display: "flex",
+              boxShadow: "0 2px 12px #229ED922",
+              display: "inline-flex",
               alignItems: "center",
-              gap: 7,
-              letterSpacing: 0.09,
+              gap: 8,
+              letterSpacing: 0.10,
+              width: "90%",
+              maxWidth: 340,
             }}
             onClick={() => {
               const tgBotName = "PlugApp_bot";
@@ -308,21 +315,22 @@ export default function HomeView({
               window.open(url, "_blank");
             }}
           >
-            <span style={{ fontSize: 21 }}>📲</span>
+            <span style={{ fontSize: 23 }}>📲</span>
             Telegram-Benachrichtigungen aktivieren
           </button>
-          <div style={{ fontSize: 12.5, color: "#229ED9", marginTop: 2 }}>
+          <div style={{ fontSize: 13.5, color: "#229ED9", marginTop: 2 }}>
             Erhalte wichtige Benachrichtigungen direkt auf Telegram!
           </div>
         </div>
       ) : (
         <div
           style={{
-            marginTop: 7,
+            marginTop: 10,
             marginBottom: 7,
             color: "#229ED9",
             fontWeight: 700,
-            fontSize: 14,
+            fontSize: 15,
+            textAlign: "center",
           }}
         >
           ✅ Telegram Benachrichtigungen aktiviert!
@@ -330,37 +338,36 @@ export default function HomeView({
       )}
       <div
         style={{
-          maxWidth: 630,
+          maxWidth: 420,
           margin: "0 auto",
-          padding: "0 10px",
-          paddingTop: 74,
-          paddingBottom: 42,
+          padding: "0 4vw",
+          paddingTop: 42,
+          paddingBottom: 54,
         }}
       >
         {/* User Header */}
         <div
           style={{
             display: "flex",
-            gap: 18,
+            gap: 12,
             alignItems: "center",
-            marginBottom: 15,
+            marginBottom: 13,
             flexWrap: "wrap",
           }}
         >
           <div
             style={{
-              background:
-                "linear-gradient(135deg,#38bdf8cc 60%,#a3e63577 100%)",
+              background: "linear-gradient(135deg,#38bdf8cc 60%,#a3e63577 100%)",
               borderRadius: "50%",
-              width: 56,
-              height: 56,
+              width: 48,
+              height: 48,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 900,
-              fontSize: 26,
+              fontSize: 22,
               color: "#fff",
-              boxShadow: "0 3px 17px #38bdf822",
+              boxShadow: "0 2.5px 14px #38bdf822",
               userSelect: "none",
             }}
           >
@@ -369,7 +376,7 @@ export default function HomeView({
           <div>
             <div
               style={{
-                fontSize: 19,
+                fontSize: 17,
                 fontWeight: 900,
                 color: "#fff",
                 letterSpacing: 1,
@@ -381,7 +388,7 @@ export default function HomeView({
               style={{
                 color: "#a3e635",
                 fontWeight: 700,
-                fontSize: 15.5,
+                fontSize: 14.5,
                 marginTop: 2,
               }}
             >
@@ -398,25 +405,25 @@ export default function HomeView({
           <div
             style={{
               background: "linear-gradient(105deg,#24292e 80%,#a3e63533 100%)",
-              borderRadius: 13,
-              padding: "13px 16px 11px 16px",
+              borderRadius: 12,
+              padding: "11px 13px 10px 13px",
               boxShadow: "0 4px 13px #a3e63533, 0 2px 8px #38bdf822",
-              marginBottom: 15,
+              marginBottom: 11,
               color: "#fff",
-              fontSize: 14.2,
+              fontSize: 13.2,
               border: "2px solid #a3e63533",
               display: "flex",
               alignItems: "center",
-              gap: 14,
+              gap: 10,
               flexWrap: "wrap",
             }}
           >
-            <Ticket size={27} style={{ color: "#a3e635", marginRight: 7 }} />
-            <div style={{ flex: 1, minWidth: 130 }}>
+            <Ticket size={22} style={{ color: "#a3e635", marginRight: 6 }} />
+            <div style={{ flex: 1, minWidth: 100 }}>
               <div
                 style={{
                   fontWeight: 800,
-                  fontSize: 15.5,
+                  fontSize: 14.5,
                   color: "#a3e635",
                   marginBottom: 1,
                 }}
@@ -424,7 +431,7 @@ export default function HomeView({
                 {aktiverPass.name}
               </div>
               <div
-                style={{ color: "#38bdf8", fontWeight: 700, fontSize: 13.5 }}
+                style={{ color: "#38bdf8", fontWeight: 700, fontSize: 12.5 }}
               >
                 {aktiverPass.rabatt}% Rabatt&nbsp; • &nbsp;
                 <span style={{ color: "#a3e635", fontWeight: 900 }}>
@@ -432,7 +439,7 @@ export default function HomeView({
                 </span>{" "}
                 gültig
               </div>
-              <div style={{ color: "#fff", fontSize: 13.2, marginTop: 2 }}>
+              <div style={{ color: "#fff", fontSize: 11.7, marginTop: 2 }}>
                 Max:{" "}
                 <span style={{ color: "#38bdf8", fontWeight: 700 }}>
                   {(aktiverPass.maxRabatt ?? 0).toFixed(2)} €
@@ -455,7 +462,7 @@ export default function HomeView({
           {broadcasts.map((b, i) => (
             <motion.div
               key={b.id}
-              initial={{ x: 60, opacity: 0, scale: 0.92 }}
+              initial={{ x: 45, opacity: 0, scale: 0.94 }}
               animate={{
                 x: 0,
                 opacity: 1,
@@ -473,7 +480,7 @@ export default function HomeView({
                         "linear-gradient(93deg,#a3e635dd 70%,#38bdf855 100%)",
                       ],
               }}
-              exit={{ x: 55, opacity: 0, scale: 0.85 }}
+              exit={{ x: 40, opacity: 0, scale: 0.92 }}
               transition={{
                 duration: 0.35,
                 type: "spring",
@@ -484,12 +491,12 @@ export default function HomeView({
                 },
               }}
               style={{
-                borderRadius: 12,
-                padding: "10px 15px",
-                fontSize: 15.5,
+                borderRadius: 11,
+                padding: "9px 13px",
+                fontSize: 14.2,
                 fontWeight: 700,
-                marginBottom: 9,
-                boxShadow: "0 1.5px 8px #23262e44",
+                marginBottom: 7,
+                boxShadow: "0 1.5px 7px #23262e44",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -503,9 +510,9 @@ export default function HomeView({
                   background: "none",
                   border: "none",
                   color: "#fff",
-                  fontSize: 19,
+                  fontSize: 18,
                   fontWeight: 800,
-                  marginLeft: 15,
+                  marginLeft: 10,
                   cursor: "pointer",
                   lineHeight: "1.3",
                   transition: "color 0.14s",
@@ -523,9 +530,10 @@ export default function HomeView({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 13,
-            marginTop: 7,
+            gridTemplateColumns: "1fr",
+            gap: 12,
+            marginTop: 6,
+            width: "100%",
           }}
         >
           {actionGrid.map((a) =>
@@ -533,7 +541,7 @@ export default function HomeView({
               <motion.button
                 key={a.id}
                 onClick={handleAction(a.action)}
-                whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
+                whileHover={{ scale: 1.07, rotate: [0, -3, 3, 0] }}
                 animate={{
                   boxShadow: [
                     "0 0px 16px #f59e4234, 0 2px 12px #a3e63521",
@@ -552,24 +560,24 @@ export default function HomeView({
                   background: a.bg,
                   color: a.color,
                   border: a.border || "none",
-                  borderRadius: 14,
+                  borderRadius: 13,
                   fontWeight: 800,
-                  fontSize: 15.5,
-                  padding: "19px 0 11px 0",
+                  fontSize: 16.3,
+                  padding: "20px 0 12px 0",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 9,
+                  gap: 8,
                   transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
-                  minHeight: 74,
+                  minHeight: 68,
                   position: "relative",
                   userSelect: "none",
                 }}
               >
                 <div>{a.icon}</div>
-                <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
+                <div style={{ letterSpacing: 0.07 }}>{a.label}</div>
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: [1, 1.13, 1] }}
@@ -580,10 +588,10 @@ export default function HomeView({
                   }}
                   style={{
                     position: "absolute",
-                    right: 13,
-                    top: 12,
+                    right: 11,
+                    top: 11,
                     color: "#fff8",
-                    fontSize: 19,
+                    fontSize: 17,
                     pointerEvents: "none",
                   }}
                 >
@@ -598,25 +606,25 @@ export default function HomeView({
                   background: a.bg,
                   color: a.color,
                   border: a.border || "none",
-                  borderRadius: 14,
+                  borderRadius: 13,
                   boxShadow: "0 2px 10px #0001",
                   fontWeight: 800,
-                  fontSize: 15.5,
-                  padding: "19px 0 11px 0",
+                  fontSize: 16.3,
+                  padding: "20px 0 12px 0",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 9,
+                  gap: 8,
                   transition: "background 0.12s, color 0.13s, box-shadow 0.13s",
-                  minHeight: 74,
+                  minHeight: 68,
                   position: "relative",
                   userSelect: "none",
                 }}
               >
                 <div>{a.icon}</div>
-                <div style={{ letterSpacing: 0.08 }}>{a.label}</div>
+                <div style={{ letterSpacing: 0.07 }}>{a.label}</div>
               </button>
             )
           )}
