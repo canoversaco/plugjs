@@ -99,25 +99,31 @@ export default class KundeView extends React.Component {
     changeConfirmLoading: null, // ID der Bestellung, die gerade verarbeitet wird
     showBewertungPopup: false,
     pendingOrderId: null, // für Bewertung
+    dismissedForOrderId: null, // Verhindert ständiges Wiederkommen!
   };
 
   componentDidMount() {
-    this.checkOpenBewertung();
+    this.checkOpenBewertung(this.props);
   }
   componentDidUpdate(prevProps) {
-    // Wenn neue Bestellungen kommen, prüfen!
-    if (prevProps.orders !== this.props.orders) {
-      this.checkOpenBewertung();
+    // Prüfe immer, wenn sich Orders oder User ändern
+    if (
+      prevProps.orders !== this.props.orders ||
+      prevProps.user !== this.props.user
+    ) {
+      this.checkOpenBewertung(this.props);
     }
   }
 
-  checkOpenBewertung() {
-    const { user, orders } = this.props;
+  checkOpenBewertung(props) {
+    const { user, orders } = props;
+    // Finde abgeschlossene Bestellung ohne Bewertung, die NICHT dismissed ist
     const offeneOrder = orders?.find(
       (o) =>
         o.kunde === user.username &&
         o.status === "abgeschlossen" &&
-        !o.rating
+        !o.rating &&
+        o.id !== this.state.dismissedForOrderId
     );
     if (offeneOrder) {
       this.setState({
@@ -138,6 +144,15 @@ export default class KundeView extends React.Component {
       ratings: { service: 5, wartezeit: 5, qualitaet: 5 },
       error: "",
       showBewertungPopup: false,
+      dismissedForOrderId: null,
+    });
+  }
+
+  handleDismissPopup() {
+    this.setState({
+      showBewertungPopup: false,
+      // Merke, für welche Order dismissed wurde:
+      dismissedForOrderId: this.state.pendingOrderId,
     });
   }
 
@@ -190,7 +205,10 @@ export default class KundeView extends React.Component {
 
       // Telegram-Benachrichtigung
       const { user } = this.props;
-      notifyTelegram(user, "✅ Du hast den Änderungsvorschlag deines Kuriers angenommen. Die Bestellung wurde aktualisiert.");
+      notifyTelegram(
+        user,
+        "✅ Du hast den Änderungsvorschlag deines Kuriers angenommen. Die Bestellung wurde aktualisiert."
+      );
 
       alert("Änderung übernommen.");
     } catch (e) {
@@ -210,7 +228,10 @@ export default class KundeView extends React.Component {
 
       // Telegram-Benachrichtigung
       const { user } = this.props;
-      notifyTelegram(user, "❌ Du hast den Änderungsvorschlag deines Kuriers abgelehnt. Die Bestellung wurde storniert.");
+      notifyTelegram(
+        user,
+        "❌ Du hast den Änderungsvorschlag deines Kuriers abgelehnt. Die Bestellung wurde storniert."
+      );
 
       alert("Änderung wurde abgelehnt. Die Bestellung ist jetzt storniert.");
     } catch (e) {
@@ -299,7 +320,13 @@ export default class KundeView extends React.Component {
           </div>
         )}
         {changed.length > 0 && (
-          <div style={{ color: "#fbbf24", margin: "8px 0 5px 0", fontWeight: 600 }}>
+          <div
+            style={{
+              color: "#fbbf24",
+              margin: "8px 0 5px 0",
+              fontWeight: 600,
+            }}
+          >
             Änderungen:
             <ul style={{ color: "#fff", marginTop: 4 }}>
               {changed.map((c, idx) => {
@@ -324,7 +351,14 @@ export default class KundeView extends React.Component {
           </div>
         )}
 
-        <div style={{ color: "#fbbf24", fontWeight: 600, marginTop: 8, marginBottom: 3 }}>
+        <div
+          style={{
+            color: "#fbbf24",
+            fontWeight: 600,
+            marginTop: 8,
+            marginBottom: 3,
+          }}
+        >
           Neuer Warenkorb (nach Änderung):
         </div>
         <ul style={{ paddingLeft: 16, margin: "5px 0 0 0" }}>
@@ -393,7 +427,13 @@ export default class KundeView extends React.Component {
 
   render() {
     const { user, orders, produkte, onGoBack, onChat } = this.props;
-    const { rateModal, ratings, error, showBewertungPopup, pendingOrderId } = this.state;
+    const {
+      rateModal,
+      ratings,
+      error,
+      showBewertungPopup,
+      pendingOrderId,
+    } = this.state;
     const eigeneBestellungen = orders
       .filter((o) => o.kunde === user.username)
       .sort((a, b) => b.ts - a.ts);
@@ -412,7 +452,7 @@ export default class KundeView extends React.Component {
         {showBewertungPopup && pendingOrderId && (
           <BewertungPopup
             onBewerten={() => this.openRating(pendingOrderId)}
-            onClose={() => this.setState({ showBewertungPopup: false })}
+            onClose={() => this.handleDismissPopup()}
           />
         )}
         <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 17 }}>
