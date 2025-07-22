@@ -3,6 +3,13 @@ import { updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import images from "./images/images";
 
+// sendTelegramNotification ist global via window verfügbar (siehe unten!)
+function notifyTelegram(user, text) {
+  if (window.sendTelegramNotification && user?.telegramChatId) {
+    window.sendTelegramNotification(user, text);
+  }
+}
+
 export default class KundeView extends React.Component {
   state = {
     rateModal: null,
@@ -51,7 +58,7 @@ export default class KundeView extends React.Component {
     this.setState({ changeConfirmLoading: order.id });
     const { changeRequest = {} } = order;
     try {
-      // Optional: Preis neu berechnen!
+      // Preis neu berechnen
       let newWarenkorb = changeRequest.newWarenkorb || order.warenkorb;
       let endpreis = 0;
       if (Array.isArray(newWarenkorb) && this.props.produkte) {
@@ -65,6 +72,11 @@ export default class KundeView extends React.Component {
         endpreis,
         changeRequest: null,
       });
+
+      // Telegram-Benachrichtigung
+      const { user } = this.props;
+      notifyTelegram(user, "✅ Du hast den Änderungsvorschlag deines Kuriers angenommen. Die Bestellung wurde aktualisiert.");
+
       alert("Änderung übernommen.");
     } catch (e) {
       alert("Fehler beim Übernehmen.");
@@ -78,8 +90,14 @@ export default class KundeView extends React.Component {
     try {
       await updateDoc(doc(db, "orders", order.id), {
         changeRequest: null,
+        status: "storniert",
       });
-      alert("Änderung wurde abgelehnt.");
+
+      // Telegram-Benachrichtigung
+      const { user } = this.props;
+      notifyTelegram(user, "❌ Du hast den Änderungsvorschlag deines Kuriers abgelehnt. Die Bestellung wurde storniert.");
+
+      alert("Änderung wurde abgelehnt. Die Bestellung ist jetzt storniert.");
     } catch (e) {
       alert("Fehler beim Ablehnen.");
     }
