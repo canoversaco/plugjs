@@ -10,19 +10,134 @@ function notifyTelegram(user, text) {
   }
 }
 
+// --- NEU: Bewertungs-Popup als großes Fullscreen-Modal ---
+function BewertungPopup({ onBewerten, onClose }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        background: "rgba(0,0,0,0.77)",
+        zIndex: 20000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 18px",
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 370,
+          background: "linear-gradient(115deg,#a3e635 70%,#38bdf8 110%)",
+          borderRadius: 19,
+          boxShadow: "0 6px 36px #a3e63555, 0 2px 18px #38bdf844",
+          padding: "33px 20px 25px 20px",
+          textAlign: "center",
+          color: "#18181b",
+          fontFamily: "inherit",
+        }}
+      >
+        <div style={{ fontSize: 36, marginBottom: 10 }}>🌟</div>
+        <h2 style={{ fontWeight: 900, fontSize: 22, marginBottom: 9 }}>
+          Bestellung bewerten
+        </h2>
+        <div style={{ fontSize: 17, marginBottom: 17 }}>
+          Du hast eine abgeschlossene Bestellung,<br /> die noch keine Bewertung hat.<br />
+          Bitte bewerte sie für ein besseres Erlebnis!
+        </div>
+        <button
+          onClick={onBewerten}
+          style={{
+            marginTop: 5,
+            background: "#23262e",
+            color: "#fff",
+            border: 0,
+            borderRadius: 8,
+            padding: "12px 0",
+            width: "100%",
+            fontWeight: 800,
+            fontSize: 17,
+            cursor: "pointer",
+            letterSpacing: 0.3,
+            boxShadow: "0 2px 13px #23262e25",
+          }}
+        >
+          Jetzt bewerten
+        </button>
+        <button
+          onClick={onClose}
+          style={{
+            marginTop: 17,
+            background: "none",
+            border: 0,
+            color: "#23262e",
+            fontWeight: 700,
+            fontSize: 16,
+            cursor: "pointer",
+            opacity: 0.64,
+            textDecoration: "underline",
+          }}
+        >
+          Später
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default class KundeView extends React.Component {
   state = {
     rateModal: null,
     ratings: { service: 0, wartezeit: 0, qualitaet: 0 },
     error: "",
     changeConfirmLoading: null, // ID der Bestellung, die gerade verarbeitet wird
+    showBewertungPopup: false,
+    pendingOrderId: null, // für Bewertung
   };
+
+  componentDidMount() {
+    this.checkOpenBewertung();
+  }
+  componentDidUpdate(prevProps) {
+    // Wenn neue Bestellungen kommen, prüfen!
+    if (prevProps.orders !== this.props.orders) {
+      this.checkOpenBewertung();
+    }
+  }
+
+  checkOpenBewertung() {
+    const { user, orders } = this.props;
+    const offeneOrder = orders?.find(
+      (o) =>
+        o.kunde === user.username &&
+        o.status === "abgeschlossen" &&
+        !o.rating
+    );
+    if (offeneOrder) {
+      this.setState({
+        showBewertungPopup: true,
+        pendingOrderId: offeneOrder.id,
+      });
+    } else {
+      this.setState({
+        showBewertungPopup: false,
+        pendingOrderId: null,
+      });
+    }
+  }
 
   openRating(orderId) {
     this.setState({
       rateModal: orderId,
       ratings: { service: 5, wartezeit: 5, qualitaet: 5 },
       error: "",
+      showBewertungPopup: false,
     });
   }
 
@@ -139,7 +254,6 @@ export default class KundeView extends React.Component {
     );
   }
 
-  // Helfer für ETA Restzeit-Text (dynamisch, 1 Minute Minimum)
   renderEta(etaTimestamp) {
     const diff = Math.round((etaTimestamp - Date.now()) / 60000);
     return diff > 1 ? diff : 1;
@@ -154,7 +268,6 @@ export default class KundeView extends React.Component {
       ? changeRequest.changedItems
       : [];
 
-    // Zeige den neuen Warenkorb
     const newWarenkorb = Array.isArray(changeRequest.newWarenkorb)
       ? changeRequest.newWarenkorb
       : order.warenkorb;
@@ -280,7 +393,7 @@ export default class KundeView extends React.Component {
 
   render() {
     const { user, orders, produkte, onGoBack, onChat } = this.props;
-    const { rateModal, ratings, error } = this.state;
+    const { rateModal, ratings, error, showBewertungPopup, pendingOrderId } = this.state;
     const eigeneBestellungen = orders
       .filter((o) => o.kunde === user.username)
       .sort((a, b) => b.ts - a.ts);
@@ -295,6 +408,13 @@ export default class KundeView extends React.Component {
           padding: 26,
         }}
       >
+        {/* Bewertungs-Popup (über alles, bei offener Bewertung) */}
+        {showBewertungPopup && pendingOrderId && (
+          <BewertungPopup
+            onBewerten={() => this.openRating(pendingOrderId)}
+            onClose={() => this.setState({ showBewertungPopup: false })}
+          />
+        )}
         <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 17 }}>
           📦 Meine Bestellungen
         </h2>
