@@ -206,7 +206,7 @@ export default function HomeView({
     }
   };
 
-  // --- Notification für offene Bewertung ---
+  // --- Notification für offene Bewertung direkt auf HomeView (Popup) ---
   useEffect(() => {
     if (
       user &&
