@@ -1,93 +1,116 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send } from "lucide-react";
 
-export default function NotificationPopup({ message, actionText, onAction, onClose, style = {} }) {
+export default function NotificationPopup({ open = true, onClose, onAction }) {
+  if (!open) return null;
   return (
-    <motion.div
-      initial={{ y: -60, opacity: 0, scale: 0.97 }}
-      animate={{ y: 0, opacity: 1, scale: 1 }}
-      exit={{ y: -60, opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.32, type: "spring" }}
-      style={{
-        position: "fixed",
-        top: 20,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 9999,
-        background: "linear-gradient(93deg,#a3e635 65%,#38bdf8 100%)",
-        color: "#18181b",
-        borderRadius: 13,
-        fontWeight: 900,
-        fontSize: 15.2,
-        padding: "10px 12px",
-        boxShadow: "0 6px 18px #38bdf829, 0 2px 8px #a3e63522",
-        display: "flex",
-        alignItems: "center",
-        minWidth: 0,
-        maxWidth: "95vw",
-        width: "auto",
-        wordBreak: "break-word",
-        lineHeight: 1.32,
-        minHeight: 0,
-        maxHeight: 90,
-        overflow: "hidden",
-        ...style,
-      }}
-    >
-      <span
+    <AnimatePresence>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.93 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
         style={{
-          flex: 1,
-          fontSize: 15.5,
-          wordBreak: "break-word",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "normal",
+          position: "fixed",
+          zIndex: 9999,
+          inset: 0,
+          background: "rgba(20,22,27,0.93)",
+          backdropFilter: "blur(2.5px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {message}
-      </span>
-      {actionText && (
-        <button
+        <motion.div
+          key="popup"
+          initial={{ scale: 0.93, opacity: 0, y: 60 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 60 }}
+          transition={{ type: "spring", duration: 0.33 }}
           style={{
-            marginLeft: 10,
-            background: "#23262e",
+            background: "linear-gradient(111deg, #222931 85%, #38bdf855 100%)",
+            borderRadius: 22,
+            boxShadow: "0 7px 40px #38bdf844",
+            width: "92vw",
+            maxWidth: 400,
+            padding: "28px 20px 22px 20px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            position: "relative",
             color: "#fff",
-            border: 0,
-            borderRadius: 8,
-            fontWeight: 800,
-            fontSize: 14.3,
-            padding: "7px 12px",
-            cursor: "pointer",
-            transition: "background 0.16s",
-            flexShrink: 0,
-            maxHeight: 36,
-            lineHeight: 1.12,
-            display: "inline-block",
+            textAlign: "center",
           }}
-          onClick={onAction}
         >
-          {actionText}
-        </button>
-      )}
-      <button
-        style={{
-          marginLeft: 7,
-          background: "none",
-          border: "none",
-          color: "#18181b",
-          fontSize: 22,
-          fontWeight: 900,
-          cursor: "pointer",
-          opacity: 0.7,
-          padding: "2px 7px",
-          flexShrink: 0,
-          lineHeight: 1,
-        }}
-        onClick={onClose}
-        aria-label="Schließen"
-      >
-        ×
-      </button>
-    </motion.div>
+          <button
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: 17,
+              right: 17,
+              background: "none",
+              border: "none",
+              fontSize: 28,
+              color: "#a3e635",
+              fontWeight: 900,
+              cursor: "pointer",
+              opacity: 0.77,
+            }}
+            aria-label="Schließen"
+          >
+            ×
+          </button>
+          <div
+            style={{
+              background:
+                "linear-gradient(135deg,#38bdf8 65%,#a3e635 120%)",
+              borderRadius: "50%",
+              width: 62,
+              height: 62,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 17,
+              boxShadow: "0 1.5px 8px #a3e63544",
+            }}
+          >
+            <Send size={35} style={{ color: "#23262e" }} />
+          </div>
+          <div style={{ fontWeight: 900, fontSize: 21, marginBottom: 11, color: "#a3e635" }}>
+            Telegram Benachrichtigungen aktivieren
+          </div>
+          <div style={{ fontSize: 15.5, color: "#e6ffe6", marginBottom: 22 }}>
+            Aktiviere Push-Benachrichtigungen über Telegram, um keine wichtigen Infos, Statusänderungen oder Angebote mehr zu verpassen. <br /><br />
+            <span style={{ color: "#fff", fontWeight: 700 }}>
+              Wir empfehlen das dringend für maximale Sicherheit &amp; Komfort!
+            </span>
+          </div>
+          <button
+            onClick={onAction}
+            style={{
+              background: "linear-gradient(90deg,#38bdf8 60%,#a3e635 120%)",
+              color: "#23262e",
+              fontWeight: 900,
+              fontSize: 16,
+              border: "none",
+              borderRadius: 12,
+              padding: "14px 0",
+              width: "100%",
+              marginBottom: 5,
+              marginTop: 3,
+              boxShadow: "0 1.5px 10px #a3e63529",
+              cursor: "pointer",
+            }}
+          >
+            Telegram verbinden
+          </button>
+          <div style={{ fontSize: 12.5, color: "#38bdf8", marginTop: 8 }}>
+            Du kannst diese Erinnerung später in den Einstellungen deaktivieren.
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
