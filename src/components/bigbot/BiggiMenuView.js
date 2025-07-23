@@ -1,5 +1,5 @@
 import React from "react";
-import images from "./images/images"; // Pfad ggf. anpassen!
+import images from "../images/images"; // Pfad ggf. anpassen!
 
 const GOLD_GRAD = "linear-gradient(90deg, #ffd700 40%, #bfa14a 100%)";
 const DARK_GRAD = "linear-gradient(120deg,#19181c 60%,#2e2b25 100%)";
