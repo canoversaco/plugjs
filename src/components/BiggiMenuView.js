@@ -13,7 +13,7 @@ const KAT_EMOJIS = {
   Cali: "🌴",
 };
 
-export default class MenuView extends React.Component {
+export default class BiggiMenuView extends React.Component {
   constructor(props) {
     super(props);
     const kategorien = Array.from(
