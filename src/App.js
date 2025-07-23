@@ -27,6 +27,8 @@ import NotificationPopup from "./components/NotificationPopup";
 import UpdateInfoModal from "./components/UpdateInfoModal";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
+// --------- NEU FÜR BIGBOT ----------
+import BiggiHomeView from "./components/bigbot/BiggiHomeView";
 
 const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 
@@ -50,19 +52,12 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// --- NEU: sendTelegramNotification 100% robust und mit Log
 async function sendTelegramNotification(user, text) {
   console.log("DEBUG: Notification wird gesendet an:", user, text);
   if (!user?.telegramChatId) {
     console.log("[sendTelegramNotification] Keine ChatId für Telegram:", user);
     return;
   }
-  console.log(
-    "[sendTelegramNotification] Sende an",
-    user.telegramChatId,
-    "Text:",
-    text
-  );
   try {
     const resp = await fetch("http://185.198.234.220:3667/send-telegram", {
       method: "POST",
@@ -86,9 +81,7 @@ async function sendTelegramNotification(user, text) {
     console.error("[sendTelegramNotification] Fehler beim Senden:", e);
   }
 }
-// ---- DAS IST NEU! ----
 window.sendTelegramNotification = sendTelegramNotification;
-// ---- ENDE NEU ----
 
 export default class App extends React.Component {
   state = {
@@ -184,7 +177,6 @@ export default class App extends React.Component {
       this.setState({ btcPrice: price });
     }, 120000);
 
-    // <--- HIER war der Syntaxfehler! KORRIGIERT:
     if (!localStorage.getItem("plug_updateinfo_seen_v2")) {
       this.setState({ showUpdateModal: true });
     }
@@ -269,7 +261,6 @@ export default class App extends React.Component {
         users.find((u) => u.rolle === "admin" || u.role === "admin");
     }
 
-    console.log("[handleSendChatMessage] Empfaenger:", empfaenger);
     if (empfaenger && empfaenger.telegramChatId) {
       await sendTelegramNotification(
         empfaenger,
@@ -330,11 +321,19 @@ export default class App extends React.Component {
 
   handleLogin = (user) => {
     this.setUserLiveListener(user);
-    this.setState({
-      user,
-      view: "home",
-      updateModalSeen: false,
-    });
+    if (user.role && user.role.startsWith("bb_")) {
+      this.setState({
+        user,
+        view: "bigbot_home",
+        updateModalSeen: false,
+      });
+    } else {
+      this.setState({
+        user,
+        view: "home",
+        updateModalSeen: false,
+      });
+    }
   };
 
   handleLogout = () => {
@@ -513,96 +512,97 @@ export default class App extends React.Component {
   render() {
     // -- ETA-Banner für Kunde, in jeder View oben!
     const activeEtaOrder = this.findActiveEtaOrder && this.findActiveEtaOrder();
+
+    // NEU: BigBot-View!
+    if (this.state.view === "bigbot_home" && this.state.user) {
+      return (
+        <BiggiHomeView
+          user={this.state.user}
+          onLogout={this.handleLogout}
+          // Gib weitere Props rein, je nach Biggi-Logik
+        />
+      );
+    }
+
     return (
       <>
-        {/* ETA-Banner für Kunden */}
         {activeEtaOrder &&
           this.state.user &&
           this.state.user.rolle !== "kurier" &&
           activeEtaOrder.eta > Date.now() && (
-            <>
-              <style>
-                {`
-                  @keyframes etafadein {
-                    from { opacity: 0; transform: translateY(-20px) scale(0.97);}
-                    to   { opacity: 1; transform: translateY(0) scale(1);}
-                  }
-                `}
-              </style>
-              <div
+            <div
+              style={{
+                position: "fixed",
+                top: 95,
+                left: 10,
+                zIndex: 5000,
+                background: "rgba(30,32,40,0.74)",
+                boxShadow: "0 3px 16px #38bdf81c, 0 1.5px 6px #0003",
+                backdropFilter: "blur(9px)",
+                borderRadius: 13,
+                display: "flex",
+                alignItems: "center",
+                gap: 11,
+                padding: "9px 18px 9px 13px",
+                fontSize: 15.5,
+                color: "#f4f4f5",
+                fontWeight: 600,
+                fontFamily: "'Inter', 'Roboto', 'Arial', sans-serif",
+                letterSpacing: 0.06,
+                border: "1.6px solid #38bdf8",
+                minWidth: 0,
+                maxWidth: 260,
+                transition: "box-shadow 0.16s",
+                animation: "etafadein 0.23s cubic-bezier(.21,.8,.34,1.18)",
+                cursor: "default",
+              }}
+            >
+              <span
                 style={{
-                  position: "fixed",
-                  top: 95,
-                  left: 10,
-                  zIndex: 5000,
-                  background: "rgba(30,32,40,0.74)",
-                  boxShadow: "0 3px 16px #38bdf81c, 0 1.5px 6px #0003",
-                  backdropFilter: "blur(9px)",
-                  borderRadius: 13,
+                  background:
+                    "linear-gradient(135deg,#38bdf8 60%,#a3e635 120%)",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
                   display: "flex",
                   alignItems: "center",
-                  gap: 11,
-                  padding: "9px 18px 9px 13px",
-                  fontSize: 15.5,
-                  color: "#f4f4f5",
-                  fontWeight: 600,
-                  fontFamily: "'Inter', 'Roboto', 'Arial', sans-serif",
-                  letterSpacing: 0.06,
-                  border: "1.6px solid #38bdf8",
-                  minWidth: 0,
-                  maxWidth: 260,
-                  transition: "box-shadow 0.16s",
-                  animation: "etafadein 0.23s cubic-bezier(.21,.8,.34,1.18)",
-                  cursor: "default",
+                  justifyContent: "center",
+                  boxShadow: "0 1.5px 4px #23262e55",
+                  fontSize: 17,
+                  color: "#18181b",
                 }}
               >
-                <span
-                  style={{
-                    background:
-                      "linear-gradient(135deg,#38bdf8 60%,#a3e635 120%)",
-                    borderRadius: "50%",
-                    width: 32,
-                    height: 32,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 1.5px 4px #23262e55",
-                    fontSize: 17,
-                    color: "#18181b",
-                  }}
-                >
-                  ⏳
+                ⏳
+              </span>
+              <span
+                style={{
+                  flex: 1,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                Ankunft&nbsp;
+                <span style={{ color: "#a3e635", fontWeight: 900 }}>
+                  {Math.max(
+                    1,
+                    Math.round((activeEtaOrder.eta - Date.now()) / 60000)
+                  )}
                 </span>
-                <span
-                  style={{
-                    flex: 1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  Ankunft&nbsp;
-                  <span style={{ color: "#a3e635", fontWeight: 900 }}>
-                    {Math.max(
-                      1,
-                      Math.round((activeEtaOrder.eta - Date.now()) / 60000)
-                    )}
-                  </span>
-                  &nbsp;min&nbsp;
-                  <span style={{ fontSize: 16, marginLeft: 1 }}>🛵</span>
-                </span>
-              </div>
-            </>
+                &nbsp;min&nbsp;
+                <span style={{ fontSize: 16, marginLeft: 1 }}>🛵</span>
+              </span>
+            </div>
           )}
+
         {this.state.showUpdateModal && (
           <UpdateInfoModal
             onClose={() => {
               this.setState({ showUpdateModal: false });
-              localStorage.setItem("plug_updateinfo_seen_v2", "1"); // neue Version? -> "_v2"
+              localStorage.setItem("plug_updateinfo_seen_v2", "1");
             }}
           />
         )}
-        {/* ---- Rest wie gehabt ---- */}
         {this.state.chatOrder && (
           <ChatWindow
             user={this.state.user}
@@ -770,8 +770,7 @@ export default class App extends React.Component {
             onOrderLocationUpdate={this.handleOrderLocationUpdate}
           />
         )}
-        {/* Fallback */}
-        {![
+        {[
           "login",
           "home",
           "inventar",
@@ -784,7 +783,7 @@ export default class App extends React.Component {
           "pässe",
           "boxen",
           "admin",
-        ].includes(this.state.view) && <div>Unbekannte Ansicht</div>}
+        ].indexOf(this.state.view) === -1 && <div>Unbekannte Ansicht</div>}
       </>
     );
   }
