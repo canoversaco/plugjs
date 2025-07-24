@@ -32,6 +32,24 @@ import BiggiHomeView from "./components/bigbot/BiggiHomeView";
 
 const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 
+// Chatfilter: Schimpfwörter, Werbung, Spam
+const BADWORDS = [
+  "hurensohn", "hure", "wichser", "bastard", "spast", "schlampe",
+  "opfer", "nutte", "missgeburt", "fick", "penner", "mongo", "drecks",
+  "cunt", "faggot", "nigger", "kanker", "asshole", "shit", "piss",
+  "scheiße", "motherfucker", "retard"
+];
+const URL_PATTERNS = [
+  /https?:\/\/\S+/i,
+  /www\.\S+\.\w{2,}/i,
+  /\bdiscord\.gg\/\w+/i,
+  /\binstagram\.com\b/i,
+  /\btg:\/\/\S+/i,
+  /\btelegram\.me\b/i,
+  /\btelegram\.org\b/i
+];
+
+
 class ErrorBoundary extends React.Component {
   state = { hasError: false };
   static getDerivedStateFromError(error) {
