@@ -1,4 +1,4 @@
-hier noch implementieren und mir 1:1 wieder ausgeben // src/App.js
+
 import React from "react";
 import { db } from "./firebase";
 import {
