@@ -1,4 +1,3 @@
-// src/components/MenuView.js
 import React from "react";
 import images from "./images/images"; // ggf. anpassen!
 
@@ -11,7 +10,6 @@ const KAT_EMOJIS = {
   Cali: "🍹",
 };
 
-// Hilfsfunktion für Kommentar-Zeitstempel
 function timeAgo(ts) {
   if (!ts) return "";
   const now = Date.now();
@@ -25,14 +23,13 @@ function timeAgo(ts) {
 export default class MenuView extends React.Component {
   constructor(props) {
     super(props);
-
     const kategorien = Array.from(
       new Set((props.produkte || []).map((p) => p.kategorie || "Standard"))
     ).map((k) => ({ name: k }));
-
     this.state = {
       kategorien,
       selectedKat: "ALLE",
+      tab: "produkte", // 'produkte' oder 'chat'
       menge: {},
       error: "",
       imgActive: "",
@@ -42,9 +39,15 @@ export default class MenuView extends React.Component {
       kommentarInput: {},
       kommentarError: {},
       submitting: {},
+      // Öffentlicher Chat
+      publicChatInput: "",
+      publicChatSending: false,
+      publicChatError: "",
+      publicChatScroll: null,
     };
   }
 
+  // Produkt-Tab Filter
   filterProdukte = () => {
     const { produkte } = this.props;
     const { selectedKat, suche } = this.state;
@@ -130,6 +133,33 @@ export default class MenuView extends React.Component {
     }
   };
 
+  // Öffentlicher Chat
+  handlePublicChatInput = (e) =>
+    this.setState({ publicChatInput: e.target.value, publicChatError: "" });
+
+  handlePublicChatSend = async () => {
+    const { onSendPublicChat, user } = this.props;
+    const text = (this.state.publicChatInput || "").trim();
+    if (!text || text.length < 2) {
+      this.setState({ publicChatError: "Bitte eine sinnvolle Nachricht eingeben." });
+      return;
+    }
+    this.setState({ publicChatSending: true, publicChatError: "" });
+    try {
+      await onSendPublicChat(text);
+      this.setState({ publicChatInput: "", publicChatSending: false });
+      if (this.state.publicChatScroll)
+        setTimeout(() => {
+          this.state.publicChatScroll.scrollTop = this.state.publicChatScroll.scrollHeight;
+        }, 60);
+    } catch (e) {
+      this.setState({
+        publicChatError: "Fehler beim Senden.",
+        publicChatSending: false,
+      });
+    }
+  };
+
   render() {
     const {
       warenkorb = [],
@@ -141,6 +171,7 @@ export default class MenuView extends React.Component {
       produktKommentare = {},
       user,
       orders,
+      publicChatMessages = [],
     } = this.props;
     const {
       kategorien,
@@ -154,6 +185,10 @@ export default class MenuView extends React.Component {
       kommentarInput,
       kommentarError,
       submitting,
+      tab,
+      publicChatInput,
+      publicChatSending,
+      publicChatError,
     } = this.state;
 
     const cartMenge = (produktId) =>
@@ -164,6 +199,28 @@ export default class MenuView extends React.Component {
       return sum + (p?.preis || 0) * w.menge;
     }, 0);
 
+    // --- NEU: TAB BAR ---
+    const tabBtnStyle = (active) => ({
+      flex: 1,
+      background: active
+        ? "linear-gradient(91deg, #38bdf8 64%, #a3e635 120%)"
+        : "#23262e",
+      color: active ? "#18181b" : "#fff",
+      border: "none",
+      borderRadius: 9,
+      fontWeight: 800,
+      fontSize: 15.6,
+      padding: "12px 5px",
+      marginRight: 6,
+      marginBottom: 0,
+      cursor: "pointer",
+      transition: "background 0.13s",
+      outline: "none",
+      letterSpacing: 0.01,
+      boxShadow: active ? "0 3px 15px #38bdf850" : "0 2px 10px #23262e18",
+      zIndex: 2,
+    });
+
     return (
       <div
         style={{
@@ -171,8 +228,8 @@ export default class MenuView extends React.Component {
           background: "linear-gradient(130deg, #191c22 60%, #1a2330 100%)",
           color: "#fff",
           fontFamily: "'Inter', sans-serif",
-          padding: "12px 2vw 36px 2vw",
-          maxWidth: 640,
+          padding: "9px 2vw 33px 2vw",
+          maxWidth: 660,
           margin: "0 auto",
         }}
       >
@@ -182,7 +239,7 @@ export default class MenuView extends React.Component {
             display: "flex",
             alignItems: "center",
             gap: 19,
-            marginBottom: 12,
+            marginBottom: 6,
           }}
         >
           <button
@@ -204,456 +261,606 @@ export default class MenuView extends React.Component {
           </button>
           <h2
             style={{
-              fontSize: 25,
+              fontSize: 24,
               fontWeight: 900,
               margin: 0,
               letterSpacing: 0.13,
             }}
           >
-            🛍️ Produkte{" "}
-            <span
-              style={{
-                fontWeight: 400,
-                fontSize: 15,
-                color: "#38bdf8",
-                marginLeft: 7,
-                letterSpacing: 0,
-              }}
-            >
-              [Bestellen]
-            </span>
+            Menü
           </h2>
         </div>
-
-        {/* Kategorie + Suche */}
-        <div className="menu-kat-bar" style={{display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 15}}>
+        {/* TAB BAR */}
+        <div style={{ display: "flex", gap: 7, marginBottom: 18 }}>
           <button
-            className={"menu-kat-btn" + (selectedKat === "ALLE" ? " selected" : "")}
-            onClick={() => this.setState({ selectedKat: "ALLE" })}
-            style={{
-              background: selectedKat === "ALLE"
-                ? "linear-gradient(93deg, #38bdf8 64%, #a3e635 125%)"
-                : "#22242b",
-              color: selectedKat === "ALLE" ? "#18181b" : "#fff",
-              border: "none",
-              borderRadius: 12,
-              padding: "7px 20px",
-              fontSize: 15.3,
-              fontWeight: 800,
-              cursor: "pointer",
-              transition: "background 0.17s, color 0.12s, transform 0.13s",
-              boxShadow: "0 2px 10px #23262e18",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              opacity: 0.94,
-              outline: "none",
-              transform: selectedKat === "ALLE" ? "scale(1.07)" : undefined,
-            }}
+            style={tabBtnStyle(tab === "produkte")}
+            onClick={() => this.setState({ tab: "produkte" })}
           >
-            <span style={{ fontSize: 18 }}>🌐</span> Alle
+            🛒 Produkte
           </button>
-          {kategorien.map((kat) => (
-            <button
-              key={kat.name}
-              className={"menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")}
-              onClick={() => this.setState({ selectedKat: kat.name })}
-              style={{
-                background: selectedKat === kat.name
-                  ? "linear-gradient(93deg, #38bdf8 64%, #a3e635 125%)"
-                  : "#22242b",
-                color: selectedKat === kat.name ? "#18181b" : "#fff",
-                border: "none",
-                borderRadius: 12,
-                padding: "7px 20px",
-                fontSize: 15.3,
-                fontWeight: 800,
-                cursor: "pointer",
-                transition: "background 0.17s, color 0.12s, transform 0.13s",
-                boxShadow: "0 2px 10px #23262e18",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                opacity: 0.94,
-                outline: "none",
-                transform: selectedKat === kat.name ? "scale(1.07)" : undefined,
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{KAT_EMOJIS[kat.name] || "🛍️"}</span>
-              {kat.name}
-            </button>
-          ))}
-          <div className="search-wrap" style={{
-            position: "relative", marginLeft: "auto", minWidth: 120, flex: 1, maxWidth: 270, display: "flex", alignItems: "center", background: "#1c1e25", borderRadius: 9, boxShadow: "0 2px 10px #38bdf820", marginRight: 7, height: 40,
-          }}>
-            <span className="search-icon" style={{
-              position: "absolute", left: 10, top: 10, fontSize: 18.5, color: "#38bdf8", opacity: 0.89,
-            }}>🔍</span>
-            <input
-              className="search-input"
-              type="text"
-              placeholder="Suchen…"
-              value={suche}
-              onChange={e => this.setState({ suche: e.target.value })}
-              maxLength={44}
-              onFocus={() => this.setState({ searchFocused: true })}
-              onBlur={() => this.setState({ searchFocused: false })}
-              style={{
-                background: searchFocused ? "#21222b" : "transparent",
-                boxShadow: searchFocused ? "0 2px 15px #38bdf822" : undefined,
-                border: "none",
-                borderRadius: 9,
-                padding: "8px 35px 8px 36px",
-                fontSize: 16,
-                color: "#fff",
-                width: "100%",
-                fontWeight: 600,
-                outline: "none",
-              }}
-            />
-            {suche && (
-              <button
-                className="search-clear-btn"
-                tabIndex={0}
-                onClick={this.clearSuche}
-                aria-label="Suchfeld leeren"
-                title="Suchfeld leeren"
-                style={{
-                  position: "absolute",
-                  right: 7,
-                  top: 8,
-                  background: "none",
-                  border: "none",
-                  color: "#f87171",
-                  fontSize: 19,
-                  cursor: "pointer",
-                  borderRadius: 20,
-                  width: 25,
-                  height: 25,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: 0.74,
-                  transition: "opacity 0.14s, background 0.14s",
-                }}
-              >
-                ×
-              </button>
-            )}
-          </div>
+          <button
+            style={tabBtnStyle(tab === "chat")}
+            onClick={() => this.setState({ tab: "chat" })}
+          >
+            💬 Öffentlicher Chat
+          </button>
         </div>
 
-        {/* PRODUKTLISTE + KOMMENTARE */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-            marginBottom: 28,
-          }}
-        >
-          {this.filterProdukte().length === 0 ? (
-            <div
-              style={{
-                color: "#a1a1aa",
-                fontSize: 17,
-                fontWeight: 500,
-                padding: 17,
-                textAlign: "center",
-                background: "#23262e",
-                borderRadius: 13,
-              }}
-            >
-              😕 Keine Produkte gefunden.
-            </div>
-          ) : (
-            this.filterProdukte().map((p) => (
-              <div
-                key={p.id}
+        {/* TAB INHALT */}
+        {tab === "produkte" && (
+          <>
+            {/* Kategorie + Suche */}
+            <div className="menu-kat-bar" style={{display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 13}}>
+              <button
+                className={"menu-kat-btn" + (selectedKat === "ALLE" ? " selected" : "")}
+                onClick={() => this.setState({ selectedKat: "ALLE" })}
                 style={{
-                  background: "#23262e",
-                  borderRadius: 16,
-                  padding: "13px 12px 8px 10px",
+                  background: selectedKat === "ALLE"
+                    ? "linear-gradient(93deg, #38bdf8 64%, #a3e635 125%)"
+                    : "#22242b",
+                  color: selectedKat === "ALLE" ? "#18181b" : "#fff",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "7px 20px",
+                  fontSize: 15.3,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  transition: "background 0.17s, color 0.12s, transform 0.13s",
+                  boxShadow: "0 2px 10px #23262e18",
                   display: "flex",
-                  flexDirection: "row",
-                  alignItems: "flex-start",
-                  boxShadow: "0 2px 12px #00000013",
-                  gap: 12,
-                  minHeight: 88,
-                  position: "relative",
+                  alignItems: "center",
+                  gap: 8,
+                  opacity: 0.94,
+                  outline: "none",
+                  transform: selectedKat === "ALLE" ? "scale(1.07)" : undefined,
                 }}
               >
-                <img
-                  src={images[p.bildName] || images.defaultBild}
-                  alt={p.name}
-                  className={
-                    "menu-prod-img" + (imgActive === p.id ? " active" : "")
-                  }
+                <span style={{ fontSize: 18 }}>🌐</span> Alle
+              </button>
+              {kategorien.map((kat) => (
+                <button
+                  key={kat.name}
+                  className={"menu-kat-btn" + (selectedKat === kat.name ? " selected" : "")}
+                  onClick={() => this.setState({ selectedKat: kat.name })}
                   style={{
-                    width: 60,
-                    height: 60,
-                    objectFit: "cover",
-                    borderRadius: 13,
-                    border: "2px solid #18181b",
-                    background: "#18181b",
+                    background: selectedKat === kat.name
+                      ? "linear-gradient(93deg, #38bdf8 64%, #a3e635 125%)"
+                      : "#22242b",
+                    color: selectedKat === kat.name ? "#18181b" : "#fff",
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "7px 20px",
+                    fontSize: 15.3,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    transition: "background 0.17s, color 0.12s, transform 0.13s",
+                    boxShadow: "0 2px 10px #23262e18",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    opacity: 0.94,
+                    outline: "none",
+                    transform: selectedKat === kat.name ? "scale(1.07)" : undefined,
                   }}
-                  onMouseDown={() => this.handleImgClick(p.id)}
-                  onMouseUp={() => this.setState({ imgActive: "" })}
-                  onMouseLeave={() => this.setState({ imgActive: "" })}
-                  tabIndex={0}
+                >
+                  <span style={{ fontSize: 18 }}>{KAT_EMOJIS[kat.name] || "🛍️"}</span>
+                  {kat.name}
+                </button>
+              ))}
+              <div className="search-wrap" style={{
+                position: "relative", marginLeft: "auto", minWidth: 120, flex: 1, maxWidth: 270, display: "flex", alignItems: "center", background: "#1c1e25", borderRadius: 9, boxShadow: "0 2px 10px #38bdf820", marginRight: 7, height: 40,
+              }}>
+                <span className="search-icon" style={{
+                  position: "absolute", left: 10, top: 10, fontSize: 18.5, color: "#38bdf8", opacity: 0.89,
+                }}>🔍</span>
+                <input
+                  className="search-input"
+                  type="text"
+                  placeholder="Suchen…"
+                  value={suche}
+                  onChange={e => this.setState({ suche: e.target.value })}
+                  maxLength={44}
+                  onFocus={() => this.setState({ searchFocused: true })}
+                  onBlur={() => this.setState({ searchFocused: false })}
+                  style={{
+                    background: searchFocused ? "#21222b" : "transparent",
+                    boxShadow: searchFocused ? "0 2px 15px #38bdf822" : undefined,
+                    border: "none",
+                    borderRadius: 9,
+                    padding: "8px 35px 8px 36px",
+                    fontSize: 16,
+                    color: "#fff",
+                    width: "100%",
+                    fontWeight: 600,
+                    outline: "none",
+                  }}
                 />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
+                {suche && (
+                  <button
+                    className="search-clear-btn"
+                    tabIndex={0}
+                    onClick={this.clearSuche}
+                    aria-label="Suchfeld leeren"
+                    title="Suchfeld leeren"
                     style={{
-                      fontWeight: 900,
-                      fontSize: 16,
-                      marginBottom: 1,
-                      letterSpacing: 0.01,
-                      color: "#fff",
+                      position: "absolute",
+                      right: 7,
+                      top: 8,
+                      background: "none",
+                      border: "none",
+                      color: "#f87171",
+                      fontSize: 19,
+                      cursor: "pointer",
+                      borderRadius: 20,
+                      width: 25,
+                      height: 25,
                       display: "flex",
                       alignItems: "center",
-                      gap: 7,
+                      justifyContent: "center",
+                      opacity: 0.74,
+                      transition: "opacity 0.14s, background 0.14s",
                     }}
                   >
-                    {p.name}
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#38bdf8",
-                      }}
-                    >
-                      {KAT_EMOJIS[p.kategorie] || ""}
-                    </span>
-                  </div>
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* PRODUKTLISTE + KOMMENTARE */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 14,
+                marginBottom: 28,
+              }}
+            >
+              {this.filterProdukte().length === 0 ? (
+                <div
+                  style={{
+                    color: "#a1a1aa",
+                    fontSize: 17,
+                    fontWeight: 500,
+                    padding: 17,
+                    textAlign: "center",
+                    background: "#23262e",
+                    borderRadius: 13,
+                  }}
+                >
+                  😕 Keine Produkte gefunden.
+                </div>
+              ) : (
+                this.filterProdukte().map((p) => (
                   <div
+                    key={p.id}
                     style={{
-                      fontSize: 13.2,
-                      color: "#a1a1aa",
-                      marginBottom: 2,
-                      minHeight: 16,
-                      letterSpacing: 0.01,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {p.beschreibung}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 14.7,
-                      marginBottom: 2,
-                      fontWeight: 700,
-                      color: "#a3e635",
-                    }}
-                  >
-                    {p.preis} €/g
-                    <span
-                      style={{
-                        color: "#bbb",
-                        fontWeight: 500,
-                        marginLeft: 7,
-                        fontSize: 13,
-                      }}
-                    >
-                      | Bestand: {p.bestand}
-                    </span>
-                  </div>
-                  <div
-                    style={{
+                      background: "#23262e",
+                      borderRadius: 16,
+                      padding: "13px 12px 8px 10px",
                       display: "flex",
-                      gap: 6,
-                      alignItems: "center",
-                      marginTop: 2,
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      boxShadow: "0 2px 12px #00000013",
+                      gap: 12,
+                      minHeight: 88,
+                      position: "relative",
                     }}
                   >
-                    <input
-                      type="number"
-                      min={1}
-                      value={menge[p.id] || 1}
-                      onChange={(e) =>
-                        this.handleMengeChange(p.id, e.target.value)
+                    <img
+                      src={images[p.bildName] || images.defaultBild}
+                      alt={p.name}
+                      className={
+                        "menu-prod-img" + (imgActive === p.id ? " active" : "")
                       }
                       style={{
-                        width: 35,
+                        width: 60,
+                        height: 60,
+                        objectFit: "cover",
+                        borderRadius: 13,
+                        border: "2px solid #18181b",
                         background: "#18181b",
-                        color: "#fff",
-                        border: "1px solid #333",
-                        borderRadius: 6,
-                        padding: "4px 6px",
-                        fontWeight: 700,
-                        fontSize: 13.5,
-                        marginRight: 2,
                       }}
+                      onMouseDown={() => this.handleImgClick(p.id)}
+                      onMouseUp={() => this.setState({ imgActive: "" })}
+                      onMouseLeave={() => this.setState({ imgActive: "" })}
+                      tabIndex={0}
                     />
-                    <button
-                      className="menu-cart-btn"
-                      onClick={() => {
-                        const m = menge[p.id] || 1;
-                        for (let i = 0; i < m; ++i) onAddToCart(p.id);
-                      }}
-                      disabled={p.bestand === 0}
-                      style={{
-                        background: "#a3e635",
-                        color: "#18181b",
-                        fontWeight: 900,
-                        borderRadius: 8,
-                        border: 0,
-                        padding: "7px 11px",
-                        fontSize: 14,
-                        cursor: p.bestand === 0 ? "not-allowed" : "pointer",
-                        opacity: p.bestand === 0 ? 0.5 : 1,
-                        marginRight: 2,
-                        boxShadow: "0 2px 8px #a3e63524",
-                      }}
-                    >
-                      ➕
-                    </button>
-                    {cartMenge(p.id) > 0 && (
-                      <button
-                        className="menu-remove-btn"
-                        onClick={() => onRemoveFromCart(p.id)}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
                         style={{
-                          background: "#f87171",
+                          fontWeight: 900,
+                          fontSize: 16,
+                          marginBottom: 1,
+                          letterSpacing: 0.01,
                           color: "#fff",
-                          border: 0,
-                          borderRadius: 8,
-                          padding: "6px 10px",
-                          fontWeight: 700,
-                          fontSize: 13,
-                          cursor: "pointer",
-                          marginLeft: 0,
-                          boxShadow: "0 1px 7px #f8717122",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
                         }}
                       >
-                        −
-                      </button>
-                    )}
-                  </div>
-                  {/* Kommentarbereich */}
-                  <div style={{
-                    marginTop: 10,
-                    background: "#18181b",
-                    borderRadius: 8,
-                    padding: "7px 8px 3px 10px",
-                  }}>
-                    <div style={{
-                      color: "#38bdf8",
-                      fontWeight: 800,
-                      fontSize: 14,
-                      marginBottom: 2,
-                      letterSpacing: 0.04,
-                    }}>
-                      💬 Kommentare
-                    </div>
-                    <div style={{
-                      maxHeight: 85,
-                      overflowY: "auto",
-                      marginBottom: 3,
-                    }}>
-                      {(produktKommentare[p.id] || []).length === 0 ? (
-                        <div style={{
-                          color: "#888",
-                          fontSize: 13,
-                          fontWeight: 400,
-                          marginBottom: 4
-                        }}>
-                          Keine Kommentare vorhanden.
-                        </div>
-                      ) : (
-                        produktKommentare[p.id]
-                          .slice()
-                          .reverse()
-                          .map((k, idx) => (
-                          <div key={idx} style={{
-                            background: "#222a",
-                            borderRadius: 7,
-                            padding: "4px 8px",
-                            marginBottom: 4,
-                            fontSize: 13.4,
-                          }}>
-                            <span style={{
-                              fontWeight: 700,
-                              color: k.user === user?.username ? "#a3e635" : "#38bdf8",
-                            }}>
-                              {k.user}
-                            </span>
-                            <span style={{
-                              fontWeight: 400,
-                              color: "#aaa",
-                              marginLeft: 7,
-                              fontSize: 12.5,
-                            }}>
-                              {timeAgo(k.ts)}
-                            </span>
-                            <div style={{
-                              marginTop: 2,
-                              fontWeight: 500,
-                              color: "#fff",
-                              wordBreak: "break-word"
-                            }}>{k.text}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {this.userHatBestellt(p.id) && (
-                      <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        marginTop: 5
-                      }}>
-                        <input
-                          type="text"
-                          placeholder="Kommentiere dieses Produkt..."
-                          maxLength={120}
-                          value={kommentarInput[p.id] || ""}
-                          onChange={e => this.handleKommentarChange(p.id, e.target.value)}
+                        {p.name}
+                        <span
                           style={{
-                            flex: 1,
-                            borderRadius: 7,
-                            border: "1.1px solid #333",
-                            padding: "5px 8px",
-                            fontSize: 13.5,
-                            background: "#23262e",
+                            fontSize: 15,
+                            fontWeight: 500,
+                            color: "#38bdf8",
+                          }}
+                        >
+                          {KAT_EMOJIS[p.kategorie] || ""}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13.2,
+                          color: "#a1a1aa",
+                          marginBottom: 2,
+                          minHeight: 16,
+                          letterSpacing: 0.01,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {p.beschreibung}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14.7,
+                          marginBottom: 2,
+                          fontWeight: 700,
+                          color: "#a3e635",
+                        }}
+                      >
+                        {p.preis} €/g
+                        <span
+                          style={{
+                            color: "#bbb",
+                            fontWeight: 500,
+                            marginLeft: 7,
+                            fontSize: 13,
+                          }}
+                        >
+                          | Bestand: {p.bestand}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                          marginTop: 2,
+                        }}
+                      >
+                        <input
+                          type="number"
+                          min={1}
+                          value={menge[p.id] || 1}
+                          onChange={(e) =>
+                            this.handleMengeChange(p.id, e.target.value)
+                          }
+                          style={{
+                            width: 35,
+                            background: "#18181b",
                             color: "#fff",
+                            border: "1px solid #333",
+                            borderRadius: 6,
+                            padding: "4px 6px",
+                            fontWeight: 700,
+                            fontSize: 13.5,
+                            marginRight: 2,
                           }}
                         />
                         <button
-                          onClick={() => this.handleKommentarAbschicken(p.id)}
-                          disabled={submitting[p.id] || !kommentarInput[p.id] || kommentarInput[p.id].trim().length < 2}
+                          className="menu-cart-btn"
+                          onClick={() => {
+                            const m = menge[p.id] || 1;
+                            for (let i = 0; i < m; ++i) onAddToCart(p.id);
+                          }}
+                          disabled={p.bestand === 0}
                           style={{
-                            background: "#38bdf8",
+                            background: "#a3e635",
                             color: "#18181b",
-                            fontWeight: 800,
-                            borderRadius: 7,
+                            fontWeight: 900,
+                            borderRadius: 8,
                             border: 0,
-                            padding: "6px 13px",
-                            fontSize: 13,
-                            cursor: (submitting[p.id] || !kommentarInput[p.id] || kommentarInput[p.id].trim().length < 2)
-                              ? "not-allowed"
-                              : "pointer",
-                            opacity: submitting[p.id] ? 0.7 : 1,
+                            padding: "7px 11px",
+                            fontSize: 14,
+                            cursor: p.bestand === 0 ? "not-allowed" : "pointer",
+                            opacity: p.bestand === 0 ? 0.5 : 1,
+                            marginRight: 2,
+                            boxShadow: "0 2px 8px #a3e63524",
                           }}
                         >
-                          {submitting[p.id] ? "..." : "Senden"}
+                          ➕
                         </button>
+                        {cartMenge(p.id) > 0 && (
+                          <button
+                            className="menu-remove-btn"
+                            onClick={() => onRemoveFromCart(p.id)}
+                            style={{
+                              background: "#f87171",
+                              color: "#fff",
+                              border: 0,
+                              borderRadius: 8,
+                              padding: "6px 10px",
+                              fontWeight: 700,
+                              fontSize: 13,
+                              cursor: "pointer",
+                              marginLeft: 0,
+                              boxShadow: "0 1px 7px #f8717122",
+                            }}
+                          >
+                            −
+                          </button>
+                        )}
                       </div>
-                    )}
-                    {kommentarError[p.id] && (
+                      {/* Kommentarbereich */}
                       <div style={{
-                        color: "#f87171",
-                        fontSize: 12.7,
-                        fontWeight: 600,
-                        marginTop: 3
-                      }}>{kommentarError[p.id]}</div>
-                    )}
+                        marginTop: 10,
+                        background: "#18181b",
+                        borderRadius: 8,
+                        padding: "7px 8px 3px 10px",
+                      }}>
+                        <div style={{
+                          color: "#38bdf8",
+                          fontWeight: 800,
+                          fontSize: 14,
+                          marginBottom: 2,
+                          letterSpacing: 0.04,
+                        }}>
+                          💬 Kommentare
+                        </div>
+                        <div style={{
+                          maxHeight: 85,
+                          overflowY: "auto",
+                          marginBottom: 3,
+                        }}>
+                          {(produktKommentare[p.id] || []).length === 0 ? (
+                            <div style={{
+                              color: "#888",
+                              fontSize: 13,
+                              fontWeight: 400,
+                              marginBottom: 4
+                            }}>
+                              Keine Kommentare vorhanden.
+                            </div>
+                          ) : (
+                            produktKommentare[p.id]
+                              .slice()
+                              .reverse()
+                              .map((k, idx) => (
+                              <div key={idx} style={{
+                                background: "#222a",
+                                borderRadius: 7,
+                                padding: "4px 8px",
+                                marginBottom: 4,
+                                fontSize: 13.4,
+                              }}>
+                                <span style={{
+                                  fontWeight: 700,
+                                  color: k.user === user?.username ? "#a3e635" : "#38bdf8",
+                                }}>
+                                  {k.user}
+                                </span>
+                                <span style={{
+                                  fontWeight: 400,
+                                  color: "#aaa",
+                                  marginLeft: 7,
+                                  fontSize: 12.5,
+                                }}>
+                                  {timeAgo(k.ts)}
+                                </span>
+                                <div style={{
+                                  marginTop: 2,
+                                  fontWeight: 500,
+                                  color: "#fff",
+                                  wordBreak: "break-word"
+                                }}>{k.text}</div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {this.userHatBestellt(p.id) && (
+                          <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            marginTop: 5
+                          }}>
+                            <input
+                              type="text"
+                              placeholder="Kommentiere dieses Produkt..."
+                              maxLength={120}
+                              value={kommentarInput[p.id] || ""}
+                              onChange={e => this.handleKommentarChange(p.id, e.target.value)}
+                              style={{
+                                flex: 1,
+                                borderRadius: 7,
+                                border: "1.1px solid #333",
+                                padding: "5px 8px",
+                                fontSize: 13.5,
+                                background: "#23262e",
+                                color: "#fff",
+                              }}
+                            />
+                            <button
+                              onClick={() => this.handleKommentarAbschicken(p.id)}
+                              disabled={submitting[p.id] || !kommentarInput[p.id] || kommentarInput[p.id].trim().length < 2}
+                              style={{
+                                background: "#38bdf8",
+                                color: "#18181b",
+                                fontWeight: 800,
+                                borderRadius: 7,
+                                border: 0,
+                                padding: "6px 13px",
+                                fontSize: 13,
+                                cursor: (submitting[p.id] || !kommentarInput[p.id] || kommentarInput[p.id].trim().length < 2)
+                                  ? "not-allowed"
+                                  : "pointer",
+                                opacity: submitting[p.id] ? 0.7 : 1,
+                              }}
+                            >
+                              {submitting[p.id] ? "..." : "Senden"}
+                            </button>
+                          </div>
+                        )}
+                        {kommentarError[p.id] && (
+                          <div style={{
+                            color: "#f87171",
+                            fontSize: 12.7,
+                            fontWeight: 600,
+                            marginTop: 3
+                          }}>{kommentarError[p.id]}</div>
+                        )}
+                      </div>
+                      {/* Ende Kommentarbereich */}
+                    </div>
                   </div>
-                  {/* Ende Kommentarbereich */}
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {tab === "chat" && (
+          <div style={{
+            maxWidth: 540,
+            margin: "0 auto",
+            borderRadius: 14,
+            background: "#23262e",
+            padding: "13px 7px 6px 11px",
+            boxShadow: "0 2px 14px #18181b13",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 330,
+            height: "60vh",
+          }}>
+            <div style={{
+              fontSize: 17,
+              fontWeight: 900,
+              marginBottom: 7,
+              color: "#38bdf8",
+              letterSpacing: 0.03
+            }}>
+              Öffentlicher Chat
+            </div>
+            <div
+              ref={(el) => {
+                if (el && publicChatMessages.length > 0 && (!this.state.publicChatScroll || el !== this.state.publicChatScroll)) {
+                  el.scrollTop = el.scrollHeight;
+                  this.setState({ publicChatScroll: el });
+                }
+              }}
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                background: "#191c22",
+                borderRadius: 11,
+                padding: "9px 7px 7px 7px",
+                marginBottom: 6,
+                minHeight: 120,
+                maxHeight: 310,
+              }}
+            >
+              {publicChatMessages.length === 0 ? (
+                <div style={{ color: "#aaa", fontSize: 15, marginTop: 15, textAlign: "center" }}>
+                  Noch keine Nachrichten. Sei der Erste!
                 </div>
+              ) : (
+                publicChatMessages.slice(-50).map((msg, idx) => (
+                  <div key={idx} style={{
+                    marginBottom: 7,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 7,
+                  }}>
+                    <div style={{
+                      background: msg.user === user?.username ? "linear-gradient(100deg, #38bdf8 60%, #a3e635 120%)" : "#2e3440",
+                      color: msg.user === user?.username ? "#18181b" : "#fff",
+                      padding: "8px 11px",
+                      borderRadius: 11,
+                      fontSize: 14.6,
+                      fontWeight: msg.user === user?.username ? 800 : 500,
+                      boxShadow: msg.user === user?.username ? "0 2px 8px #a3e63530" : "",
+                      maxWidth: "88%",
+                      wordBreak: "break-word",
+                    }}>
+                      <span style={{ fontWeight: 700 }}>
+                        {msg.user}
+                      </span>
+                      <span style={{
+                        fontWeight: 400,
+                        color: "#888",
+                        marginLeft: 8,
+                        fontSize: 12,
+                      }}>
+                        {timeAgo(msg.ts)}
+                      </span>
+                      <div style={{
+                        marginTop: 2,
+                        fontWeight: 500,
+                        color: msg.user === user?.username ? "#18181b" : "#fff"
+                      }}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 3
+            }}>
+              <input
+                type="text"
+                placeholder="Nachricht schreiben…"
+                maxLength={222}
+                value={publicChatInput}
+                onChange={this.handlePublicChatInput}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && publicChatInput.trim().length >= 2 && !publicChatSending) {
+                    this.handlePublicChatSend();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  borderRadius: 8,
+                  border: "1.2px solid #2e3440",
+                  padding: "8px 12px",
+                  fontSize: 15,
+                  background: "#191c22",
+                  color: "#fff",
+                  outline: "none",
+                  fontWeight: 600,
+                }}
+              />
+              <button
+                onClick={this.handlePublicChatSend}
+                disabled={publicChatSending || publicChatInput.trim().length < 2}
+                style={{
+                  background: "#38bdf8",
+                  color: "#18181b",
+                  fontWeight: 900,
+                  borderRadius: 8,
+                  border: 0,
+                  padding: "9px 19px",
+                  fontSize: 15.5,
+                  cursor: (publicChatSending || publicChatInput.trim().length < 2) ? "not-allowed" : "pointer",
+                  opacity: publicChatSending ? 0.6 : 1,
+                }}
+              >
+                {publicChatSending ? "..." : "Senden"}
+              </button>
+            </div>
+            {publicChatError && (
+              <div style={{ color: "#f87171", fontWeight: 600, fontSize: 13.3, marginTop: 2 }}>
+                {publicChatError}
               </div>
-            ))
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* FLOATING WARENKORB-BUTTON */}
         <button
