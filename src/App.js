@@ -98,8 +98,10 @@ export default class App extends React.Component {
     userListener: null,
     mysteryBoxes: [],
     warenkorbFromInventory: null,
-    // Kommentare zu Produkten: { [produktId]: [ { user, username, text, ts } ] }
-    produktKommentare: {}
+    produktKommentare: {},
+
+    // PUBLIC CHAT
+    publicChatMessages: [],
   };
 
   unsub = [];
@@ -167,6 +169,23 @@ export default class App extends React.Component {
         });
         this.setState({ mysteryBoxes: boxes });
       })
+    );
+
+    // ----- PUBLIC CHAT LADEN -----
+    this.unsub.push(
+      onSnapshot(
+        query(
+          collection(db, "chats", "public", "messages"),
+          orderBy("ts", "asc")
+        ),
+        (snap) => {
+          this.setState({
+            publicChatMessages: snap.docs
+              .map((doc) => doc.data())
+              .filter((msg) => typeof msg.text === "string" && !!msg.user && msg.ts),
+          });
+        }
+      )
     );
 
     const btcPrice = await fetchBtcPriceEUR();
@@ -548,6 +567,18 @@ export default class App extends React.Component {
     });
   };
 
+  // --- PUBLIC CHAT MESSAGE SPEICHERN ---
+  handleSendPublicChat = async (text) => {
+    const { user } = this.state;
+    if (!user || !text || text.trim().length < 2) return;
+    await addDoc(collection(db, "chats", "public", "messages"), {
+      user: user.username,
+      userId: user.id,
+      text: text.trim(),
+      ts: Date.now(),
+    });
+  };
+
   render() {
     const activeEtaOrder = this.findActiveEtaOrder && this.findActiveEtaOrder();
 
@@ -740,6 +771,10 @@ export default class App extends React.Component {
             orders={this.state.orders}
             produktKommentare={this.state.produktKommentare}
             onProduktKommentarSubmit={this.handleProduktKommentarSubmit}
+
+            // PUBLIC CHAT Props:
+            publicChatMessages={this.state.publicChatMessages}
+            onSendPublicChat={this.handleSendPublicChat}
           />
         )}
         {this.state.view === "order" && this.state.user && (
