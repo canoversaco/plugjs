@@ -320,21 +320,10 @@ export default class App extends React.Component {
   };
 
   handleLogin = (user) => {
-    this.setUserLiveListener(user);
-    if (user.role && user.role.startsWith("bb_")) {
-      this.setState({
-        user,
-        view: "bigbot_home",
-        updateModalSeen: false,
-      });
-    } else {
-      this.setState({
-        user,
-        view: "home",
-        updateModalSeen: false,
-      });
-    }
-  };
+  this.setUserLiveListener(user);
+  const view = (user.role && user.role.startsWith("bb_")) ? "bigbot_home" : "home";
+  this.setState({ user, view, updateModalSeen: false });
+};
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
