@@ -3,23 +3,24 @@ import React from "react";
 export default class LoginView extends React.Component {
   state = { username: "", password: "", error: "", pwShow: false };
 
-  handleLogin = () => {
-    const { users, onLogin } = this.props;
-    const { username, password } = this.state;
-    if (!username || !password) {
-      this.setState({ error: "Bitte Benutzername und Passwort eingeben." });
-      return;
-    }
-    const user = users.find(
-      (u) => u.username === username && u.password === password
-    );
-    if (!user) {
-      this.setState({ error: "Login fehlgeschlagen. Prüfe Name & Passwort." });
-      return;
-    }
-    this.setState({ error: "" });
-    onLogin(user);
-  };
+ handleLogin = () => {
+  const { users, onLogin } = this.props;
+  const { username, password } = this.state;
+  if (!username || !password) {
+    this.setState({ error: "Bitte Benutzername und Passwort eingeben." });
+    return;
+  }
+  // usernames vergleichen immer toLowerCase(), falls du das willst
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+  if (!user) {
+    this.setState({ error: "Login fehlgeschlagen. Prüfe Name & Passwort." });
+    return;
+  }
+  this.setState({ error: "" });
+  onLogin(user);   // das user-Objekt wird übergeben!
+};
 
   render() {
     const { username, password, error, pwShow } = this.state;
