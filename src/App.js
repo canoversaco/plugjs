@@ -1,4 +1,3 @@
-
 import React from "react";
 import { db } from "./firebase";
 import {
@@ -8,6 +7,8 @@ import {
   doc,
   updateDoc,
   getDoc,
+  query,
+  orderBy
 } from "firebase/firestore";
 import BuyCryptoModal from "./components/BuyCryptoModal";
 import LoginView from "./components/LoginView";
@@ -27,7 +28,6 @@ import NotificationPopup from "./components/NotificationPopup";
 import UpdateInfoModal from "./components/UpdateInfoModal";
 import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
-// --------- NEU FÜR BIGBOT ----------
 import BiggiHomeView from "./components/bigbot/BiggiHomeView";
 
 const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
@@ -53,11 +53,7 @@ class ErrorBoundary extends React.Component {
 }
 
 async function sendTelegramNotification(user, text) {
-  console.log("DEBUG: Notification wird gesendet an:", user, text);
-  if (!user?.telegramChatId) {
-    console.log("[sendTelegramNotification] Keine ChatId für Telegram:", user);
-    return;
-  }
+  if (!user?.telegramChatId) return;
   try {
     const resp = await fetch("http://185.198.234.220:3667/send-telegram", {
       method: "POST",
@@ -74,8 +70,6 @@ async function sendTelegramNotification(user, text) {
         resp.status,
         msg
       );
-    } else {
-      console.log("[sendTelegramNotification] Erfolgreich geschickt.");
     }
   } catch (e) {
     console.error("[sendTelegramNotification] Fehler beim Senden:", e);
@@ -104,9 +98,12 @@ export default class App extends React.Component {
     userListener: null,
     mysteryBoxes: [],
     warenkorbFromInventory: null,
+    // Kommentare zu Produkten: { [produktId]: [ { user, username, text, ts } ] }
+    produktKommentare: {}
   };
 
   unsub = [];
+  kommentarUnsubs = {};
 
   setUserLiveListener = (user) => {
     if (this.state.userListener) {
@@ -122,13 +119,17 @@ export default class App extends React.Component {
   };
 
   async componentDidMount() {
+    // Produkte & Kommentare live laden!
     this.unsub.push(
       onSnapshot(collection(db, "produkte"), (snap) => {
-        this.setState({
-          produkte: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+        const produkte = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        this.setState({ produkte }, () => {
+          // Nach jedem Produkt-Update Kommentare live nachladen!
+          this.listenProduktKommentare();
         });
       })
     );
+
     this.unsub.push(
       onSnapshot(collection(db, "orders"), (snap) => {
         this.setState({
@@ -184,10 +185,33 @@ export default class App extends React.Component {
 
   componentWillUnmount() {
     this.unsub.forEach((f) => f && f());
+    Object.values(this.kommentarUnsubs).forEach((f) => f && f());
     if (this.state.userListener) this.state.userListener();
     clearInterval(this.depositInterval);
     clearInterval(this.priceInterval);
   }
+
+  listenProduktKommentare = () => {
+    // Immer alle Listener entfernen!
+    Object.values(this.kommentarUnsubs).forEach((f) => f && f());
+    this.kommentarUnsubs = {};
+    const { produkte } = this.state;
+    // Zu jedem Produkt die Kommentare live abonnieren:
+    if (produkte && produkte.length) {
+      produkte.forEach((p) => {
+        const produktId = p.id;
+        const q = query(collection(db, "produkte", produktId, "kommentare"), orderBy("ts", "desc"));
+        this.kommentarUnsubs[produktId] = onSnapshot(q, (snap) => {
+          this.setState((s) => ({
+            produktKommentare: {
+              ...s.produktKommentare,
+              [produktId]: snap.docs.map((doc) => doc.data()),
+            },
+          }));
+        });
+      });
+    }
+  };
 
   monitorDeposits = async () => {
     const { users } = this.state;
@@ -319,26 +343,24 @@ export default class App extends React.Component {
     await addDoc(collection(db, "orders"), order);
   };
 
- handleLogin = (user) => {
-  this.setUserLiveListener(user);
+  handleLogin = (user) => {
+    this.setUserLiveListener(user);
 
-  // Wichtig: Konsequent ein Feld benutzen! role ODER rolle!
-  const role = user.role || user.rolle || "";
-
-  if (role.startsWith("bb_")) {
-    this.setState({
-      user,
-      view: "bigbot_home",
-      updateModalSeen: false,
-    });
-  } else {
-    this.setState({
-      user,
-      view: "home",
-      updateModalSeen: false,
-    });
-  }
-};
+    const role = user.role || user.rolle || "";
+    if (role.startsWith("bb_")) {
+      this.setState({
+        user,
+        view: "bigbot_home",
+        updateModalSeen: false,
+      });
+    } else {
+      this.setState({
+        user,
+        view: "home",
+        updateModalSeen: false,
+      });
+    }
+  };
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
@@ -513,17 +535,27 @@ export default class App extends React.Component {
     this.setState({ view: "inventar" });
   };
 
+  // --- PRODUKT-KOMMENTAR SPEICHERN ---
+  handleProduktKommentarSubmit = async (produktId, text) => {
+    const { user } = this.state;
+    if (!user) return;
+    if (!text || text.length < 2) return;
+    await addDoc(collection(db, "produkte", produktId, "kommentare"), {
+      user: user.id,
+      username: user.username,
+      text: text.trim(),
+      ts: Date.now(),
+    });
+  };
+
   render() {
-    // -- ETA-Banner für Kunde, in jeder View oben!
     const activeEtaOrder = this.findActiveEtaOrder && this.findActiveEtaOrder();
 
-    // NEU: BigBot-View!
     if (this.state.view === "bigbot_home" && this.state.user) {
       return (
         <BiggiHomeView
           user={this.state.user}
           onLogout={this.handleLogout}
-          // Gib weitere Props rein, je nach Biggi-Logik
         />
       );
     }
@@ -704,6 +736,10 @@ export default class App extends React.Component {
             onRemoveFromCart={this.handleRemoveFromCart}
             onCheckout={() => this.setState({ view: "order" })}
             onGoBack={() => this.setState({ view: "home" })}
+            user={this.state.user}
+            orders={this.state.orders}
+            produktKommentare={this.state.produktKommentare}
+            onProduktKommentarSubmit={this.handleProduktKommentarSubmit}
           />
         )}
         {this.state.view === "order" && this.state.user && (
