@@ -138,27 +138,35 @@ export default class MenuView extends React.Component {
     this.setState({ publicChatInput: e.target.value, publicChatError: "" });
 
   handlePublicChatSend = async () => {
-    const { onSendPublicChat, user } = this.props;
-    const text = (this.state.publicChatInput || "").trim();
-    if (!text || text.length < 2) {
-      this.setState({ publicChatError: "Bitte eine sinnvolle Nachricht eingeben." });
-      return;
-    }
-    this.setState({ publicChatSending: true, publicChatError: "" });
-    try {
-      await onSendPublicChat(text);
-      this.setState({ publicChatInput: "", publicChatSending: false });
-      if (this.state.publicChatScroll)
-        setTimeout(() => {
-          this.state.publicChatScroll.scrollTop = this.state.publicChatScroll.scrollHeight;
-        }, 60);
-    } catch (e) {
-      this.setState({
-        publicChatError: "Fehler beim Senden.",
-        publicChatSending: false,
-      });
-    }
-  };
+    const { user } = this.state;
+  if (!user || !text || text.trim().length < 2) return;
+
+  const lower = text.trim().toLowerCase();
+
+  // Badword Filter
+  if (BADWORDS.some(w => lower.includes(w))) {
+    alert("Deine Nachricht enthält ein verbotenes Wort.");
+    return;
+  }
+  // Werbung/Links Filter
+  if (URL_PATTERNS.some(rx => rx.test(text))) {
+    alert("Links und Werbung sind im Chat nicht erlaubt.");
+    return;
+  }
+
+  // Optional: Spam Filter (mehr als 5 gleiche Zeichen in Folge, nur Emojis etc.)
+  if (/(\w)\1{4,}/.test(lower)) {
+    alert("Bitte keinen Spam.");
+    return;
+  }
+
+  await addDoc(collection(db, "chats", "public", "messages"), {
+    user: user.username,
+    userId: user.id,
+    text: text.trim(),
+    ts: Date.now(),
+  });
+};
 
   render() {
     const {
@@ -807,6 +815,19 @@ export default class MenuView extends React.Component {
                 ))
               )}
             </div>
+               {/* Chat Regeln */}
+  <div style={{
+    background: "#23262e",
+    borderRadius: 7,
+    padding: "7px 11px",
+    color: "#a3e635",
+    fontSize: 13,
+    fontWeight: 600,
+    marginBottom: 8
+  }}>
+    <b>Chat-Regeln:</b> Keine Beleidigungen. Keine Links oder Werbung. Kein Spam.<br />
+    Verstöße führen zum Bann.
+  </div>
             <div style={{
               display: "flex",
               alignItems: "center",
