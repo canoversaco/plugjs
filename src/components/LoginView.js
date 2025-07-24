@@ -3,24 +3,23 @@ import React from "react";
 export default class LoginView extends React.Component {
   state = { username: "", password: "", error: "", pwShow: false };
 
- handleLogin = () => {
-  const { users, onLogin } = this.props;
-  const { username, password } = this.state;
-  if (!username || !password) {
-    this.setState({ error: "Bitte Benutzername und Passwort eingeben." });
-    return;
-  }
-  // usernames vergleichen immer toLowerCase(), falls du das willst
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-  if (!user) {
-    this.setState({ error: "Login fehlgeschlagen. Prüfe Name & Passwort." });
-    return;
-  }
-  this.setState({ error: "" });
-  onLogin(user);   // das user-Objekt wird übergeben!
-};
+  handleLogin = () => {
+    const { users, onLogin } = this.props;
+    const { username, password } = this.state;
+    if (!username || !password) {
+      this.setState({ error: "Bitte Benutzername und Passwort eingeben." });
+      return;
+    }
+    const user = users.find(
+      (u) => u.username === username && u.password === password
+    );
+    if (!user) {
+      this.setState({ error: "Login fehlgeschlagen. Prüfe Name & Passwort." });
+      return;
+    }
+    this.setState({ error: "" });
+    onLogin(user);
+  };
 
   render() {
     const { username, password, error, pwShow } = this.state;
@@ -57,7 +56,7 @@ export default class LoginView extends React.Component {
           {/* Wartungsmodus Info */}
           <div
             style={{
-              backgroundColor: "#21d128",
+              backgroundColor: "#fbbf24",
               color: "#1a202c",
               fontWeight: "700",
               padding: "10px 16px",
@@ -69,7 +68,9 @@ export default class LoginView extends React.Component {
               lineHeight: "1.3em",
             }}
           >
-            🎁 Mystery Box Update! Öffne eine Mystery Box und lass dich überraschen! Es bestehen keine Anmeldeprobleme mehr und die App kann wie gewohnt weiter genutzt werden. 
+            ⚠️ Die App befindet sich momentan im Wartungsmodus. Es können
+            vereinzelt Probleme auftreten. Bitte installiere die App neu, um
+            Fehler zu vermeiden.
           </div>
 
           <div
