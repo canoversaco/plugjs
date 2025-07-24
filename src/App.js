@@ -319,11 +319,18 @@ export default class App extends React.Component {
     await addDoc(collection(db, "orders"), order);
   };
 
-  handleLogin = (user) => {
-  this.setUserLiveListener(user);
-  const view = (user.role && user.role.startsWith("bb_")) ? "bigbot_home" : "home";
-  this.setState({ user, view, updateModalSeen: false });
-};
+ function handleLogin() {
+    setError("");
+    const u = users.find(
+      (u) => u.username === loginName && u.password === loginPass
+    );
+    if (!u) {
+      setError("Benutzername oder Passwort falsch!");
+      return;
+    }
+    setUser(u);
+    setView("home");
+  }
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
