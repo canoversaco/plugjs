@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import images from "./images/images";
@@ -30,13 +30,13 @@ const STATUS_COLORS = {
 
 // =============== MAP PICKER ===================
 function TreffpunktMapPicker({ value, onChange, onCancel }) {
-  const mapRef = useRef();
-  const markerRef = useRef();
+  const mapRef = React.useRef();
+  const markerRef = React.useRef();
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [marker, setMarker] = useState(value || [51.5, 7.0]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const markerEl = document.createElement("div");
     markerEl.style.background = "#38bdf8";
     markerEl.style.width = "24px";
@@ -81,7 +81,7 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
     // eslint-disable-next-line
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (mapRef.current && markerRef.current && marker) {
       const coord = fromLonLat([marker[1], marker[0]]);
       markerRef.current.setPosition(coord);
@@ -204,6 +204,46 @@ function TreffpunktMapPicker({ value, onChange, onCancel }) {
           Abbrechen
         </button>
       </div>
+    </div>
+  );
+}
+
+// Status Popover Component
+function StatusPopover({ value, onChange, onClose }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 38,
+        left: 0,
+        background: "#23262e",
+        borderRadius: 8,
+        boxShadow: "0 4px 24px #0009",
+        padding: 8,
+        zIndex: 99,
+        minWidth: 120,
+      }}
+    >
+      {STATUS_OPTIONS.map((s) => (
+        <div
+          key={s}
+          onClick={() => { onChange(s); onClose(); }}
+          style={{
+            padding: "7px 10px",
+            color: value === s ? "#fff" : "#a1a1aa",
+            background: value === s ? STATUS_COLORS[s] : "none",
+            borderRadius: 6,
+            fontWeight: 700,
+            fontSize: 15,
+            marginBottom: 2,
+            cursor: "pointer",
+            textTransform: "capitalize",
+            transition: "background 0.13s",
+          }}
+        >
+          {s}
+        </div>
+      ))}
     </div>
   );
 }
@@ -402,7 +442,7 @@ function EditOrderPanel({ order, produkte, onSave, onCancel }) {
   );
 }
 
-// ========== KURIER VIEW (mit Collapse/Accordion und Notizanzeige) ===========
+// ========== KURIER VIEW =============
 export default function KurierView({
   user,
   orders = [],
@@ -412,24 +452,40 @@ export default function KurierView({
   onOrderDelete,
   onOrderStatusUpdate,
 }) {
-  const [statusEditId, setStatusEditId] = useState(null);
+  const [statusPopoverId, setStatusPopoverId] = useState(null);
   const [treffpunktEdit, setTreffpunktEdit] = useState(null);
   const [loadingUpdate, setLoadingUpdate] = useState(false);
   const [orderEditId, setOrderEditId] = useState(null);
   const [etaInputs, setEtaInputs] = useState({});
-  const [openOrderIds, setOpenOrderIds] = useState([]);
+  const [expandedOrder, setExpandedOrder] = useState(null);
 
-  // Status ändern
+  // ETA-Timer: auto-close
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      for (let order of orders) {
+        if (
+          order.eta &&
+          order.eta > 0 &&
+          order.eta < Date.now() &&
+          order.status !== "abgeschlossen"
+        ) {
+          await handleStatusChange(order.id, "abgeschlossen");
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
+  }, [orders]);
+
   const handleStatusChange = async (orderId, status) => {
     if (typeof onOrderStatusUpdate === "function") {
       await onOrderStatusUpdate(orderId, status);
     } else {
       await updateDoc(doc(db, "orders", orderId), { status });
     }
-    setStatusEditId(null);
+    setStatusPopoverId(null);
   };
 
-  // Treffpunkt ändern (und speichern)
   const handleSaveTreffpunkt = async (orderId, pos) => {
     setLoadingUpdate(true);
     await updateDoc(doc(db, "orders", orderId), { treffpunkt: pos });
@@ -437,7 +493,6 @@ export default function KurierView({
     setLoadingUpdate(false);
   };
 
-  // ETA setzen
   const handleSetEta = async (orderId) => {
     const etaMin = Number(etaInputs[orderId]);
     if (!etaMin || etaMin < 1) {
@@ -447,23 +502,22 @@ export default function KurierView({
     const eta = Date.now() + etaMin * 60000;
     await updateDoc(doc(db, "orders", orderId), { eta });
     setEtaInputs((old) => ({ ...old, [orderId]: "" }));
-    alert(`Ankunftszeit (ETA) auf ${etaMin} Minuten gesetzt!`);
   };
 
-  // ETA anzeigen
   const renderEta = (etaTimestamp) => {
-    const diff = Math.round((etaTimestamp - Date.now()) / 60000);
-    return diff > 1 ? diff : 1;
+    const diff = Math.round((etaTimestamp - Date.now()) / 1000);
+    if (diff < 0) return "Abgelaufen";
+    const min = Math.floor(diff / 60);
+    const sec = diff % 60;
+    return `${min}m ${sec < 10 ? "0" : ""}${sec}s`;
   };
 
-  // Löschen
   const handleDelete = async (orderId) => {
     if (window.confirm("Bestellung wirklich löschen?")) {
       await deleteDoc(doc(db, "orders", orderId));
     }
   };
 
-  // Änderung speichern/an Kunde schicken
   const handleSaveOrderEdit = async (orderId, { newWarenkorb, changedItems, extraNote }) => {
     await updateDoc(doc(db, "orders", orderId), {
       changeRequest: {
@@ -476,7 +530,6 @@ export default function KurierView({
       },
     });
     setOrderEditId(null);
-    setOpenOrderIds((prev) => Array.from(new Set([...prev, orderId])));
     alert("Änderungsvorschlag wurde an den Kunden gesendet!");
   };
 
@@ -487,67 +540,55 @@ export default function KurierView({
     .filter((o) => o.status !== "offen")
     .sort((a, b) => b.ts - a.ts);
 
-  // Accordion-Handler
-  function toggleOrderAccordion(orderId) {
-    setOpenOrderIds((prev) =>
-      prev.includes(orderId)
-        ? prev.filter((id) => id !== orderId)
-        : [...prev, orderId]
-    );
-  }
-
-  // ==== Einzeilige Bestellungsanzeige + Details bei Klick ====
-  function OrderAccordionRow({ order, produkte, autoOpen }) {
-    const isOpen =
-      openOrderIds.includes(order.id) ||
-      statusEditId === order.id ||
-      treffpunktEdit === order.id ||
-      orderEditId === order.id ||
-      autoOpen;
-
+  // ---- CARD/KACHEL LAYOUT ----
+  const OrderCard = ({ order }) => {
+    const isExpanded = expandedOrder === order.id;
     return (
-      <>
-        <tr
-          onClick={(e) => {
-            // Details nur öffnen wenn auf Zelle, nicht auf Button etc.
-            if (e.target.tagName !== "BUTTON" && e.target.tagName !== "SELECT" && e.target.tagName !== "INPUT" && e.target.tagName !== "A") {
-              toggleOrderAccordion(order.id);
-            }
-          }}
-          style={{
-            background: isOpen ? "#23262e" : "#191a20",
-            borderRadius: 10,
-            cursor: "pointer",
-            boxShadow: isOpen ? "0 2px 16px #0006" : undefined,
-            borderBottom: "3px solid #101014",
-            transition: "background 0.17s",
-          }}
-        >
-          <td style={{ padding: 10, fontWeight: 700 }}>
-            {order.kunde}
+      <div
+        style={{
+          background: "#23262e",
+          borderRadius: 16,
+          boxShadow: "0 3px 20px #0004",
+          margin: "16px 0",
+          padding: "22px 24px",
+          maxWidth: 530,
+          width: "100%",
+          position: "relative",
+          cursor: "pointer",
+          transition: "box-shadow 0.18s, background 0.14s",
+          border: isExpanded ? "2.5px solid #38bdf8" : "2px solid #222",
+        }}
+        onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#e3ff64" }}>
+              {order.kunde}
+            </div>
             {order.notiz && (
-              <span
-                style={{
-                  marginLeft: 8,
-                  background: "#fbbf247a",
-                  color: "#23262e",
-                  padding: "2px 7px",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-                title="Kundennotiz"
-              >
+              <div style={{
+                background: "#fbbf247a",
+                color: "#23262e",
+                padding: "4px 10px",
+                borderRadius: 9,
+                marginTop: 5,
+                fontWeight: 800,
+                fontSize: 14,
+                display: "inline-block"
+              }}>
                 📝 {order.notiz}
-              </span>
+              </div>
             )}
-          </td>
-          <td style={{ padding: 10 }}>
-            <ul style={{ margin: 0, paddingLeft: 14 }}>
+            <div style={{ fontSize: 14, color: "#a1a1aa", marginTop: 5 }}>
+              <b>Preis:</b> {order.endpreis?.toFixed(2) ?? "-"} €
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <ul style={{ margin: "5px 0 0 0", padding: 0, listStyle: "none" }}>
               {(order.warenkorb || []).map((item, idx) => {
                 const p = produkte.find((pr) => pr.id === item.produktId);
                 return (
-                  <li key={idx} style={{ fontSize: 15 }}>
+                  <li key={idx} style={{ fontSize: 14, marginBottom: 2, display: "flex", alignItems: "center" }}>
                     <img
                       src={images[p?.bildName] || images.defaultBild}
                       alt={p?.name}
@@ -557,7 +598,7 @@ export default function KurierView({
                         borderRadius: 6,
                         objectFit: "cover",
                         verticalAlign: "middle",
-                        marginRight: 6,
+                        marginRight: 7,
                       }}
                     />
                     {p?.name || "?"} × {item.menge}
@@ -565,275 +606,210 @@ export default function KurierView({
                 );
               })}
             </ul>
-          </td>
-          <td style={{ padding: 10, fontWeight: 600 }}>
-            {order.endpreis?.toFixed(2) ?? "-"} €
-          </td>
-          <td style={{ padding: 10 }}>
-            {order.treffpunkt ? (
-              <a
-                href={`https://maps.google.com/?q=${order.treffpunkt[0]},${order.treffpunkt[1]}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: "#38bdf8",
-                  textDecoration: "underline",
-                  fontWeight: 600,
-                }}
-                onClick={e => e.stopPropagation()}
-              >
-                Karte öffnen
-              </a>
-            ) : (
-              <span style={{ color: "#a1a1aa" }}>–</span>
-            )}
-          </td>
-          <td style={{ padding: 10 }}>
-            <span
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 7 }}>
+            <button
+              onClick={e => { e.stopPropagation(); setStatusPopoverId(statusPopoverId === order.id ? null : order.id); }}
               style={{
-                background: STATUS_COLORS[order.status] || "#23262e",
+                background: STATUS_COLORS[order.status] || "#191a20",
                 color: "#18181b",
+                border: "none",
                 borderRadius: 7,
                 fontWeight: 900,
-                padding: "3px 11px",
                 fontSize: 14,
-                display: "inline-block",
+                padding: "6px 19px",
+                boxShadow: "0 1px 6px #18181b15",
+                cursor: "pointer",
+                position: "relative"
               }}
             >
               {order.status}
-            </span>
-          </td>
-          <td style={{ padding: 10 }}>
-            {order.eta && order.eta > Date.now() && (
-              <span style={{ color: "#a3e635", fontWeight: 700 }}>
-                ETA: {renderEta(order.eta)} min
-              </span>
-            )}
-          </td>
-        </tr>
-        {isOpen && (
-          <tr>
-            <td colSpan={6} style={{
-              background: "#23262e",
-              borderRadius: "0 0 13px 13px",
-              boxShadow: "0 4px 32px #0009",
-              padding: 0,
-            }}>
-              {/* DETAILS: Editierfunktionen & Aktionen */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 18, padding: 20 }}>
-                <div>
-                  <b>Status: </b>
-                  <span
+              {statusPopoverId === order.id && (
+                <StatusPopover
+                  value={order.status}
+                  onChange={(s) => handleStatusChange(order.id, s)}
+                  onClose={() => setStatusPopoverId(null)}
+                />
+              )}
+            </button>
+            <div style={{ fontSize: 13, color: "#a3e635", fontWeight: 700, minHeight: 26 }}>
+              {order.eta && order.eta > Date.now() ? (
+                <>
+                  ⏰ ETA: {renderEta(order.eta)}
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div style={{ marginTop: 15, borderTop: "1px solid #222", paddingTop: 15, display: "flex", flexWrap: "wrap", gap: 18 }}>
+            <div style={{ minWidth: 175 }}>
+              <b>Treffpunkt:</b>
+              <br />
+              {treffpunktEdit === order.id ? (
+                <TreffpunktMapPicker
+                  value={order.treffpunkt}
+                  onChange={(pos) => handleSaveTreffpunkt(order.id, pos)}
+                  onCancel={() => setTreffpunktEdit(null)}
+                />
+              ) : order.treffpunkt ? (
+                <span>
+                  <a
+                    href={`https://maps.google.com/?q=${order.treffpunkt[0]},${order.treffpunkt[1]}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
-                      background: STATUS_COLORS[order.status] || "#23262e",
-                      color: "#18181b",
-                      borderRadius: 7,
-                      fontWeight: 900,
-                      padding: "3px 11px",
-                      fontSize: 14,
-                      cursor: "pointer",
+                      color: "#38bdf8",
+                      textDecoration: "underline",
+                      fontWeight: 600,
                       marginRight: 7,
-                      display: "inline-block",
                     }}
-                    onClick={() => setStatusEditId(order.id)}
+                    onClick={e => e.stopPropagation()}
                   >
-                    {order.status}
-                  </span>
-                  {statusEditId === order.id && (
-                    <select
-                      autoFocus
-                      value={order.status}
-                      onBlur={() => setStatusEditId(null)}
-                      onChange={(e) =>
-                        handleStatusChange(order.id, e.target.value)
-                      }
-                      style={{
-                        marginLeft: 7,
-                        borderRadius: 7,
-                        padding: 4,
-                        fontWeight: 700,
-                        fontSize: 15,
-                      }}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-                <div>
-                  <b>Treffpunkt: </b>
-                  {treffpunktEdit === order.id ? (
-                    <TreffpunktMapPicker
-                      value={order.treffpunkt}
-                      onChange={(pos) => handleSaveTreffpunkt(order.id, pos)}
-                      onCancel={() => setTreffpunktEdit(null)}
-                    />
-                  ) : order.treffpunkt ? (
-                    <>
-                      <a
-                        href={`https://maps.google.com/?q=${order.treffpunkt[0]},${order.treffpunkt[1]}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "#38bdf8",
-                          textDecoration: "underline",
-                          fontWeight: 600,
-                          marginRight: 7,
-                        }}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        Karte öffnen
-                      </a>
-                      <button
-                        onClick={e => { e.stopPropagation(); setTreffpunktEdit(order.id); }}
-                        style={{
-                          background: "#38bdf8",
-                          color: "#18181b",
-                          border: 0,
-                          borderRadius: 7,
-                          fontWeight: 700,
-                          padding: "5px 9px",
-                          fontSize: 13,
-                          marginLeft: 3,
-                          cursor: "pointer",
-                        }}
-                        disabled={loadingUpdate}
-                      >
-                        🖉 Ändern
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={e => { e.stopPropagation(); setTreffpunktEdit(order.id); }}
-                      style={{
-                        background: "#a3e635",
-                        color: "#18181b",
-                        border: 0,
-                        borderRadius: 7,
-                        fontWeight: 700,
-                        padding: "5px 10px",
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                      disabled={loadingUpdate}
-                    >
-                      Treffpunkt setzen
-                    </button>
-                  )}
-                </div>
-                <div>
-                  <b>ETA (Minuten):</b>
-                  <input
-                    type="number"
-                    min={1}
-                    value={etaInputs[order.id] || ""}
-                    onChange={(e) =>
-                      setEtaInputs((old) => ({
-                        ...old,
-                        [order.id]: e.target.value,
-                      }))
-                    }
-                    style={{
-                      width: 55,
-                      marginLeft: 7,
-                      borderRadius: 6,
-                      border: "1px solid #383838",
-                      fontSize: 14,
-                      padding: 4,
-                      background: "#191a20",
-                      color: "#fff",
-                    }}
-                    placeholder="Min"
-                  />
+                    Karte öffnen
+                  </a>
                   <button
-                    onClick={e => { e.stopPropagation(); handleSetEta(order.id); }}
-                    style={{
-                      background: "#a3e635",
-                      color: "#18181b",
-                      border: 0,
-                      borderRadius: 8,
-                      padding: "6px 10px",
-                      fontWeight: 700,
-                      fontSize: 14,
-                      marginLeft: 3,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Setzen
-                  </button>
-                  {order.eta && order.eta > Date.now() && (
-                    <span style={{ color: "#a3e635", fontWeight: 700, marginLeft: 10 }}>
-                      ETA: {renderEta(order.eta)} min
-                    </span>
-                  )}
-                </div>
-                <div style={{ minWidth: 180 }}>
-                  <button
-                    onClick={e => { e.stopPropagation(); onChat && onChat(order); }}
+                    onClick={e => { e.stopPropagation(); setTreffpunktEdit(order.id); }}
                     style={{
                       background: "#38bdf8",
                       color: "#18181b",
                       border: 0,
                       borderRadius: 7,
                       fontWeight: 700,
-                      padding: "6px 13px",
-                      marginRight: 7,
-                      fontSize: 14,
+                      padding: "5px 9px",
+                      fontSize: 13,
+                      marginLeft: 3,
                       cursor: "pointer",
                     }}
+                    disabled={loadingUpdate}
                   >
-                    💬 Chat
+                    🖉 Ändern
                   </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); onOrderDelete ? onOrderDelete(order.id) : handleDelete(order.id); }}
-                    style={{
-                      background: "#f87171",
-                      color: "#fff",
-                      border: 0,
-                      borderRadius: 7,
-                      fontWeight: 700,
-                      padding: "6px 13px",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
-                  >
-                    🗑️ Löschen
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); setOrderEditId(order.id); }}
-                    style={{
-                      background: "#fbbf24",
-                      color: "#18181b",
-                      border: 0,
-                      borderRadius: 7,
-                      fontWeight: 700,
-                      padding: "6px 12px",
-                      fontSize: 14,
-                      marginLeft: 7,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ✏️ Produkte ändern
-                  </button>
-                </div>
-              </div>
-              {orderEditId === order.id && (
-                <EditOrderPanel
-                  order={order}
-                  produkte={produkte}
-                  onSave={(changeObj) => handleSaveOrderEdit(order.id, changeObj)}
-                  onCancel={() => setOrderEditId(null)}
-                />
+                </span>
+              ) : (
+                <button
+                  onClick={e => { e.stopPropagation(); setTreffpunktEdit(order.id); }}
+                  style={{
+                    background: "#a3e635",
+                    color: "#18181b",
+                    border: 0,
+                    borderRadius: 7,
+                    fontWeight: 700,
+                    padding: "5px 10px",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                  disabled={loadingUpdate}
+                >
+                  Treffpunkt setzen
+                </button>
               )}
-            </td>
-          </tr>
+            </div>
+            <div>
+              <b>ETA setzen:</b>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 2 }}>
+                <input
+                  type="number"
+                  min={1}
+                  value={etaInputs[order.id] || ""}
+                  onChange={(e) =>
+                    setEtaInputs((old) => ({
+                      ...old,
+                      [order.id]: e.target.value,
+                    }))
+                  }
+                  style={{
+                    width: 50,
+                    borderRadius: 6,
+                    border: "1px solid #383838",
+                    fontSize: 14,
+                    padding: 4,
+                    background: "#191a20",
+                    color: "#fff",
+                  }}
+                  placeholder="Min"
+                />
+                <button
+                  onClick={e => { e.stopPropagation(); handleSetEta(order.id); }}
+                  style={{
+                    background: "#a3e635",
+                    color: "#18181b",
+                    border: 0,
+                    borderRadius: 8,
+                    padding: "6px 10px",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Setzen
+                </button>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <button
+                onClick={e => { e.stopPropagation(); onChat && onChat(order); }}
+                style={{
+                  background: "#38bdf8",
+                  color: "#18181b",
+                  border: 0,
+                  borderRadius: 7,
+                  fontWeight: 700,
+                  padding: "6px 13px",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  marginBottom: 2
+                }}
+              >
+                💬 Chat
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); onOrderDelete ? onOrderDelete(order.id) : handleDelete(order.id); }}
+                style={{
+                  background: "#f87171",
+                  color: "#fff",
+                  border: 0,
+                  borderRadius: 7,
+                  fontWeight: 700,
+                  padding: "6px 13px",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  marginBottom: 2
+                }}
+              >
+                🗑️ Löschen
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setOrderEditId(order.id); }}
+                style={{
+                  background: "#fbbf24",
+                  color: "#18181b",
+                  border: 0,
+                  borderRadius: 7,
+                  fontWeight: 700,
+                  padding: "6px 12px",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                ✏️ Produkte ändern
+              </button>
+            </div>
+          </div>
         )}
-      </>
+        {/* Produkt-Edit Panel */}
+        {orderEditId === order.id && (
+          <EditOrderPanel
+            order={order}
+            produkte={produkte}
+            onSave={(changeObj) => handleSaveOrderEdit(order.id, changeObj)}
+            onCancel={() => setOrderEditId(null)}
+          />
+        )}
+      </div>
     );
-  }
+  };
 
   return (
     <div
@@ -842,10 +818,12 @@ export default function KurierView({
         background: "#101014",
         color: "#fff",
         fontFamily: "'Inter',sans-serif",
-        padding: 30,
+        padding: "36px 7vw 38px 7vw",
+        maxWidth: 1300,
+        margin: "0 auto"
       }}
     >
-      <h2 style={{ fontSize: 26, fontWeight: 900, marginBottom: 18 }}>
+      <h2 style={{ fontSize: 30, fontWeight: 900, marginBottom: 20, color: "#e3ff64", letterSpacing: 1 }}>
         🛵 Kurier Panel
       </h2>
       <button
@@ -853,103 +831,61 @@ export default function KurierView({
         style={{
           background: "#23262e",
           color: "#fff",
-          borderRadius: 8,
+          borderRadius: 9,
           border: 0,
           padding: "10px 22px",
           fontSize: 17,
           fontWeight: 700,
           cursor: "pointer",
-          marginBottom: 18,
+          marginBottom: 30,
         }}
       >
         ⬅️ Zurück
       </button>
-
-      {/* Offene Bestellungen */}
-      <section
-        style={{
-          background: "#191a20",
-          borderRadius: 14,
-          padding: 18,
-          marginBottom: 30,
-          maxWidth: 1000,
-        }}
-      >
-        <h3
-          style={{
-            fontWeight: 800,
-            fontSize: 18,
-            marginBottom: 9,
-            color: "#fbbf24",
-          }}
-        >
-          Offene Bestellungen
-        </h3>
-        {offeneOrders.length === 0 ? (
-          <div style={{ color: "#aaa" }}>Keine offenen Bestellungen.</div>
-        ) : (
-          <table style={{ width: "100%", borderSpacing: 0 }}>
-            <thead>
-              <tr style={{ color: "#a1a1aa", fontSize: 15 }}>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Kunde</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Produkte</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Preis</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Treffpunkt</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Status</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>ETA</th>
-              </tr>
-            </thead>
-            <tbody>
-              {offeneOrders.map((order) => (
-                <OrderAccordionRow key={order.id} order={order} produkte={produkte} autoOpen={true} />
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {/* Angenommene & alte Bestellungen */}
-      <section
-        style={{
-          background: "#191a20",
-          borderRadius: 14,
-          padding: 18,
-          marginBottom: 30,
-          maxWidth: 1000,
-        }}
-      >
-        <h3
-          style={{
-            fontWeight: 800,
-            fontSize: 18,
-            marginBottom: 9,
-            color: "#38bdf8",
-          }}
-        >
-          Angenommene & alte Bestellungen
-        </h3>
-        {andereOrders.length === 0 ? (
-          <div style={{ color: "#aaa" }}>Keine angenommenen oder alten Bestellungen.</div>
-        ) : (
-          <table style={{ width: "100%", borderSpacing: 0 }}>
-            <thead>
-              <tr style={{ color: "#a1a1aa", fontSize: 15 }}>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Kunde</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Produkte</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Preis</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Treffpunkt</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>Status</th>
-                <th style={{ textAlign: "left", padding: "5px 6px" }}>ETA</th>
-              </tr>
-            </thead>
-            <tbody>
-              {andereOrders.map((order) => (
-                <OrderAccordionRow key={order.id} order={order} produkte={produkte} autoOpen={false} />
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 40,
+        alignItems: "flex-start",
+        justifyContent: "flex-start"
+      }}>
+        <div style={{ flex: 1, minWidth: 320 }}>
+          <h3
+            style={{
+              fontWeight: 800,
+              fontSize: 20,
+              marginBottom: 8,
+              color: "#fbbf24",
+              letterSpacing: 0.4,
+            }}
+          >
+            Offene Bestellungen
+          </h3>
+          {offeneOrders.length === 0 ? (
+            <div style={{ color: "#aaa", marginTop: 13 }}>Keine offenen Bestellungen.</div>
+          ) : (
+            offeneOrders.map((order) => <OrderCard key={order.id} order={order} />)
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 320 }}>
+          <h3
+            style={{
+              fontWeight: 800,
+              fontSize: 20,
+              marginBottom: 8,
+              color: "#38bdf8",
+              letterSpacing: 0.4,
+            }}
+          >
+            Angenommene & alte Bestellungen
+          </h3>
+          {andereOrders.length === 0 ? (
+            <div style={{ color: "#aaa", marginTop: 13 }}>Keine angenommenen oder alten Bestellungen.</div>
+          ) : (
+            andereOrders.map((order) => <OrderCard key={order.id} order={order} />)
+          )}
+        </div>
+      </div>
     </div>
   );
 }
