@@ -319,18 +319,18 @@ export default class App extends React.Component {
     await addDoc(collection(db, "orders"), order);
   };
 
-  handleLogin() => {
-    setError("");
-    const u = users.find(
-      (u) => u.username === loginName && u.password === loginPass
-    );
-    if (!u) {
-      setError("Benutzername oder Passwort falsch!");
-      return;
-    }
-    setUser(u);
-    setView("home");
+  const handleLogin = () => {
+  setError("");
+  const u = users.find(
+    (u) => u.username === loginName && u.password === loginPass
+  );
+  if (!u) {
+    setError("Benutzername oder Passwort falsch!");
+    return;
   }
+  setUser(u);
+  setView("home");
+};
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
