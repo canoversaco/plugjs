@@ -328,7 +328,7 @@ export default class App extends React.Component {
         view: "bigbot_home",
         updateModalSeen: false,
       });
-    } else {
+    } else  if (user.role && !user.role.startsWith("bb_")) {
       this.setState({
         user,
         view: "home",
