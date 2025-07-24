@@ -1,4 +1,4 @@
-// src/App.js
+hier noch implementieren und mir 1:1 wieder ausgeben // src/App.js
 import React from "react";
 import { db } from "./firebase";
 import {
@@ -29,7 +29,6 @@ import "leaflet/dist/leaflet.css";
 import { fetchBtcPriceEUR, fetchReceivedTxs } from "./components/btcApi";
 // --------- NEU FÜR BIGBOT ----------
 import BiggiHomeView from "./components/bigbot/BiggiHomeView";
-import BiggiMenuView from "./components/bigbot/BiggiMenuView";
 
 const ADMIN_BTC_WALLET = "bc1qdhqf4axsq4mnd6eq4fjj06jmfgmtlj5ar574z7";
 
@@ -321,22 +320,21 @@ export default class App extends React.Component {
   };
 
   handleLogin = (user) => {
-  this.setUserLiveListener(user);
-  if (user.role && user.role.startsWith("bb_")) {
-    this.setState({
-      user,
-      view: "bigbot_home",
-      updateModalSeen: false,
-    });
-  } else {
-    this.setState({
-      user,
-      view: "home",
-      updateModalSeen: false,
-    });
-  }
-};
-
+    this.setUserLiveListener(user);
+    if (user.role && user.role.startsWith("bb_")) {
+      this.setState({
+        user,
+        view: "bigbot_home",
+        updateModalSeen: false,
+      });
+    } else {
+      this.setState({
+        user,
+        view: "home",
+        updateModalSeen: false,
+      });
+    }
+  };
 
   handleLogout = () => {
     if (this.state.userListener) this.state.userListener();
@@ -525,20 +523,6 @@ export default class App extends React.Component {
         />
       );
     }
-if (this.state.view === "bigbot_menu" && this.state.user) {
-  return (
-    <BiggiMenuView
-      user={this.state.user}
-      produkte={this.state.produkte}
-      warenkorb={this.state.warenkorb}
-      onAddToCart={this.handleAddToCart}
-      onRemoveFromCart={this.handleRemoveFromCart}
-      onCheckout={() => this.setState({ view: "order" })}
-      onGoBack={() => this.setState({ view: "bigbot_home" })}
-      // weitere Props falls nötig
-    />
-  );
-}
 
     return (
       <>
