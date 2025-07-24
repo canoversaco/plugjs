@@ -319,7 +319,7 @@ export default class App extends React.Component {
     await addDoc(collection(db, "orders"), order);
   };
 
- function handleLogin() => {
+  handleLogin() => {
     setError("");
     const u = users.find(
       (u) => u.username === loginName && u.password === loginPass
