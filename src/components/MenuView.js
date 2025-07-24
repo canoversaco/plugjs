@@ -826,7 +826,7 @@ export default class MenuView extends React.Component {
     marginBottom: 8
   }}>
     <b>Chat-Regeln:</b> Keine Beleidigungen. Keine Links oder Werbung. Kein Spam.<br />
-    Verstöße führen zum Bann.
+    Kein treffen unter Kunden. Kein abwerben von Kunden. Keine Geld/Kombi fragen. Verstöße führen zum auschluss.
   </div>
             <div style={{
               display: "flex",
