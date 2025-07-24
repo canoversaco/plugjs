@@ -796,6 +796,31 @@ export default function KurierView({
                 ✏️ Produkte ändern
               </button>
             </div>
+            {/* Bewertung anzeigen */}
+            {order.status === "abgeschlossen" && order.rating && (
+              <div
+                style={{
+                  background: "#18181b",
+                  color: "#a3e635",
+                  borderRadius: 9,
+                  padding: "11px 17px 8px 15px",
+                  marginTop: 13,
+                  fontWeight: 600,
+                  fontSize: 15.5,
+                  minWidth: 150,
+                  maxWidth: 310,
+                  boxShadow: "0 2px 14px #0003"
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: 18 }}>🌟 Bewertung:</span>
+                  <br />
+                  <b>Service:</b> {order.rating.service}/5<br />
+                  <b>Wartezeit:</b> {order.rating.wartezeit}/5<br />
+                  <b>Qualität:</b> {order.rating.qualitaet}/5
+                </div>
+              </div>
+            )}
           </div>
         )}
         {/* Produkt-Edit Panel */}
