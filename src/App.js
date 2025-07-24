@@ -319,17 +319,25 @@ export default class App extends React.Component {
     await addDoc(collection(db, "orders"), order);
   };
 
-  const handleLogin = () => {
-  setError("");
-  const u = users.find(
-    (u) => u.username === loginName && u.password === loginPass
-  );
-  if (!u) {
-    setError("Benutzername oder Passwort falsch!");
-    return;
+ handleLogin = (user) => {
+  this.setUserLiveListener(user);
+
+  // Wichtig: Konsequent ein Feld benutzen! role ODER rolle!
+  const role = user.role || user.rolle || "";
+
+  if (role.startsWith("bb_")) {
+    this.setState({
+      user,
+      view: "bigbot_home",
+      updateModalSeen: false,
+    });
+  } else {
+    this.setState({
+      user,
+      view: "home",
+      updateModalSeen: false,
+    });
   }
-  setUser(u);
-  setView("home");
 };
 
   handleLogout = () => {
