@@ -20,6 +20,13 @@ function timeAgo(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
+// Telegram Notification Helper (wie in KundeView)
+function notifyTelegram(user, text) {
+  if (window.sendTelegramNotification && user?.telegramChatId) {
+    window.sendTelegramNotification(user, text);
+  }
+}
+
 export default class MenuView extends React.Component {
   constructor(props) {
     super(props);
@@ -45,6 +52,41 @@ export default class MenuView extends React.Component {
       publicChatScroll: null,
     };
   }
+
+  // === TELEGRAM NOTIFY ON CHECKOUT ===
+  sendCheckoutTelegramNotification = () => {
+    const { warenkorb = [], user, produkte = [] } = this.props;
+    if (!user || !warenkorb.length) return;
+
+    // Einmalig pro Session für den aktuellen Warenkorb!
+    const cartKey =
+      "checkoutNotified_" +
+      warenkorb
+        .map((w) => w.produktId + ":" + w.menge)
+        .sort()
+        .join("_");
+    if (sessionStorage.getItem(cartKey)) return;
+
+    notifyTelegram(
+      user,
+      `🛒 Neue Bestellung von ${user.username || "Unbekannt"}\nWarenkorb: ${
+        warenkorb
+          .map(
+            (w) =>
+              (produkte.find((p) => p.id === w.produktId)?.name || "Produkt") +
+              " x" +
+              w.menge
+          )
+          .join(", ")
+      }\nGesamtpreis: ${warenkorb
+        .reduce((sum, w) => {
+          const p = produkte.find((pr) => pr.id === w.produktId);
+          return sum + (p?.preis || 0) * w.menge;
+        }, 0)
+        .toFixed(2)} €`
+    );
+    sessionStorage.setItem(cartKey, "1");
+  };
 
   filterProdukte = () => {
     const { produkte } = this.props;
@@ -131,9 +173,16 @@ export default class MenuView extends React.Component {
     }
   };
 
-  // -- Chat Methoden: gekürzt --
+  // Chat (optional, gekürzt)
   handlePublicChatInput = (e) =>
     this.setState({ publicChatInput: e.target.value, publicChatError: "" });
+
+  // === Checkout Handler mit Telegram Notify ===
+  handleCheckout = () => {
+    this.sendCheckoutTelegramNotification();
+    this.handleCartClose();
+    if (this.props.onCheckout) this.props.onCheckout();
+  };
 
   render() {
     const {
@@ -1036,10 +1085,7 @@ export default class MenuView extends React.Component {
                   Gesamt: {gesamt.toFixed(2)} €
                 </div>
                 <button
-                  onClick={() => {
-                    this.handleCartClose();
-                    onCheckout();
-                  }}
+                  onClick={this.handleCheckout}
                   disabled={warenkorb.length === 0}
                   style={{
                     background: warenkorb.length === 0 ? "#444" : "#38bdf8",
