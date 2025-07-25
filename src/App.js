@@ -512,6 +512,20 @@ export default class App extends React.Component {
       chat: [],
     });
 
+
+
+    
+    if (orderData.zahlung === "krypto") {
+      await updateDoc(doc(db, "users", user.id), {
+        guthaben: user.guthaben - zuZahlen,
+      });
+    }
+
+    this.setState({
+      warenkorb: [],
+      warenkorbFromInventory: null,
+      view: "meine",
+    });
   // === NEU: Telegram Notification für Admin ===
   // Admin-User aus User-Liste suchen (z.B. erste(n) mit role: "admin")
   const adminUser = users.find(u => u.role === "admin" || u.rolle === "admin");
@@ -527,19 +541,7 @@ export default class App extends React.Component {
     window.sendTelegramNotification(adminUser, msg);
   }
 
-
     
-    if (orderData.zahlung === "krypto") {
-      await updateDoc(doc(db, "users", user.id), {
-        guthaben: user.guthaben - zuZahlen,
-      });
-    }
-
-    this.setState({
-      warenkorb: [],
-      warenkorbFromInventory: null,
-      view: "meine",
-    });
   };
 
   handleBuyCryptoClick = async (eur, btc) => {
