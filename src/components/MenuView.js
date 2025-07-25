@@ -29,7 +29,7 @@ export default class MenuView extends React.Component {
     this.state = {
       kategorien,
       selectedKat: "ALLE",
-      tab: "produkte", // 'produkte' oder 'chat'
+      tab: "produkte",
       menge: {},
       error: "",
       imgActive: "",
@@ -39,7 +39,6 @@ export default class MenuView extends React.Component {
       kommentarInput: {},
       kommentarError: {},
       submitting: {},
-      // Öffentlicher Chat
       publicChatInput: "",
       publicChatSending: false,
       publicChatError: "",
@@ -47,7 +46,6 @@ export default class MenuView extends React.Component {
     };
   }
 
-  // Produkt-Tab Filter
   filterProdukte = () => {
     const { produkte } = this.props;
     const { selectedKat, suche } = this.state;
@@ -133,40 +131,9 @@ export default class MenuView extends React.Component {
     }
   };
 
-  // Öffentlicher Chat
+  // -- Chat Methoden: gekürzt --
   handlePublicChatInput = (e) =>
     this.setState({ publicChatInput: e.target.value, publicChatError: "" });
-
-  handlePublicChatSend = async () => {
-    const { user } = this.state;
-  if (!user || !text || text.trim().length < 2) return;
-
-  const lower = text.trim().toLowerCase();
-
-  // Badword Filter
-  if (BADWORDS.some(w => lower.includes(w))) {
-    alert("Deine Nachricht enthält ein verbotenes Wort.");
-    return;
-  }
-  // Werbung/Links Filter
-  if (URL_PATTERNS.some(rx => rx.test(text))) {
-    alert("Links und Werbung sind im Chat nicht erlaubt.");
-    return;
-  }
-
-  // Optional: Spam Filter (mehr als 5 gleiche Zeichen in Folge, nur Emojis etc.)
-  if (/(\w)\1{4,}/.test(lower)) {
-    alert("Bitte keinen Spam.");
-    return;
-  }
-
-  await addDoc(collection(db, "chats", "public", "messages"), {
-    user: user.username,
-    userId: user.id,
-    text: text.trim(),
-    ts: Date.now(),
-  });
-};
 
   render() {
     const {
@@ -207,7 +174,6 @@ export default class MenuView extends React.Component {
       return sum + (p?.preis || 0) * w.menge;
     }, 0);
 
-    // --- NEU: TAB BAR ---
     const tabBtnStyle = (active) => ({
       flex: 1,
       background: active
@@ -414,7 +380,6 @@ export default class MenuView extends React.Component {
                 )}
               </div>
             </div>
-
             {/* PRODUKTLISTE + KOMMENTARE */}
             <div
               style={{
