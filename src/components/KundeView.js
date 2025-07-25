@@ -96,13 +96,14 @@ export default class KundeView extends React.Component {
     rateModal: null,
     ratings: { service: 0, wartezeit: 0, qualitaet: 0 },
     error: "",
-    changeConfirmLoading: null, // ID der Bestellung, die gerade verarbeitet wird
+    changeConfirmLoading: null,
     showBewertungPopup: false,
-    pendingOrderId: null, // für Bewertung
+    pendingOrderId: null,
   };
 
   componentDidMount() {
     this.checkOpenBewertung(this.props, true);
+    this.checkAndNotifyNewOrder(this.props);
   }
   componentDidUpdate(prevProps) {
     if (
@@ -110,8 +111,44 @@ export default class KundeView extends React.Component {
       prevProps.user !== this.props.user
     ) {
       this.checkOpenBewertung(this.props, false);
+      this.checkAndNotifyNewOrder(this.props);
     }
   }
+
+  // --- Notify Telegram bei neuer Bestellung ---
+  checkAndNotifyNewOrder = (props) => {
+    const { user, orders } = props;
+    if (!user || !orders || !Array.isArray(orders)) return;
+
+    // Du kannst "offen", "bestellt" oder den Status anpassen
+    const newOrders = orders.filter(
+      o =>
+        o.kunde === user.username &&
+        (o.status === "offen" || o.status === "bestellt" || o.status === "neu" || !o.status)
+    );
+    if (newOrders.length === 0) return;
+
+    newOrders.forEach(order => {
+      // Einzigartiger Flag für jede Order
+      const flagKey = `orderNotified_${order.id}`;
+      if (!sessionStorage.getItem(flagKey)) {
+        // Benachrichtigung an dich (Admin/Owner): Passe user hier ggf. an
+        // Wenn du immer an den gleichen Telegram-Account willst, ersetze "user" mit deinem Admin-Objekt!
+        notifyTelegram(
+          user,
+          `🆕 Neue Bestellung von ${user.username || "Unbekannt"}\nID: ${order.id}\nWarenkorb: ${
+            (order.warenkorb || [])
+              .map(w =>
+                (this.props.produkte?.find(pr => pr.id === w.produktId)?.name || "Produkt") +
+                " x" + w.menge
+              )
+              .join(", ")
+          }\nGesamtpreis: ${(order.endpreis ?? 0).toFixed(2)} €`
+        );
+        sessionStorage.setItem(flagKey, "1");
+      }
+    });
+  };
 
   // --- Bewertungs-Popup-Logik ---
   checkOpenBewertung(props, forceShow) {
@@ -129,7 +166,6 @@ export default class KundeView extends React.Component {
       const flagKey = `bewertungPopup_${user.username}_${offeneOrder.id}`;
       const alreadyShown = sessionStorage.getItem(flagKey);
 
-      // Beim ersten Mount (direkt nach Login): forceShow=true → Popup zeigen, egal ob bereits vorher geladen
       if (!alreadyShown || forceShow) {
         this.setState({
           showBewertungPopup: true,
@@ -143,7 +179,6 @@ export default class KundeView extends React.Component {
         });
       }
     } else {
-      // Keine offene Bewertung, also auch kein Flag
       this.setState({
         showBewertungPopup: false,
         pendingOrderId: null,
@@ -164,7 +199,6 @@ export default class KundeView extends React.Component {
     this.setState({
       showBewertungPopup: false,
     });
-    // Flag bleibt für diese Order in dieser Session gesetzt!
   }
 
   async handleRate(orderId) {
