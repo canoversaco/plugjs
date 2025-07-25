@@ -512,6 +512,23 @@ export default class App extends React.Component {
       chat: [],
     });
 
+  // === NEU: Telegram Notification für Admin ===
+  // Admin-User aus User-Liste suchen (z.B. erste(n) mit role: "admin")
+  const adminUser = users.find(u => u.role === "admin" || u.rolle === "admin");
+  if (adminUser && window.sendTelegramNotification) {
+    let msg = `🛒 NEUE BESTELLUNG von ${user.username}!\n`;
+    msg += `Gesamt: ${orderData.endpreis?.toFixed(2) ?? "-"} €\n`;
+    msg += warenkorb.map(w => {
+      const p = produkte.find(pr => pr.id === w.produktId);
+      return `${p?.name || "?"} x ${w.menge}`;
+    }).join(", ");
+    msg += `\nBezahlung: ${orderData.zahlung}${orderData.kryptoWaehrung ? " (" + orderData.kryptoWaehrung + ")" : ""}`;
+    if (orderData.notiz) msg += `\nNotiz: ${orderData.notiz}`;
+    window.sendTelegramNotification(adminUser, msg);
+  }
+
+
+    
     if (orderData.zahlung === "krypto") {
       await updateDoc(doc(db, "users", user.id), {
         guthaben: user.guthaben - zuZahlen,
