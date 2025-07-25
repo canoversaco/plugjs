@@ -68,9 +68,10 @@ export default class LoginView extends React.Component {
               lineHeight: "1.3em",
             }}
           >
-            ⚠️ Die App befindet sich momentan im Wartungsmodus. Es können
-            vereinzelt Probleme auftreten. Bitte installiere die App neu, um
-            Fehler zu vermeiden.
+            Neue Updates: Produkte Kommentieren, Öffentlicher Chat (im Menü)
+            Krypto Einzahlungen bis zum 31.07 +5% (100€ Einzahlung -> 105€ Guthaben)
+            
+            
           </div>
 
           <div
