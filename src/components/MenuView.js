@@ -20,7 +20,6 @@ function timeAgo(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
-// Telegram Notification Helper (wie in KundeView)
 function notifyTelegram(user, text) {
   if (window.sendTelegramNotification && user?.telegramChatId) {
     window.sendTelegramNotification(user, text);
@@ -51,6 +50,7 @@ export default class MenuView extends React.Component {
       publicChatError: "",
       publicChatScroll: null,
     };
+    this.isCheckoutRunning = false;
   }
 
   // === TELEGRAM NOTIFY ON CHECKOUT ===
@@ -58,7 +58,6 @@ export default class MenuView extends React.Component {
     const { warenkorb = [], user, produkte = [] } = this.props;
     if (!user || !warenkorb.length) return;
 
-    // Einmalig pro Session für den aktuellen Warenkorb!
     const cartKey =
       "checkoutNotified_" +
       warenkorb
@@ -173,15 +172,30 @@ export default class MenuView extends React.Component {
     }
   };
 
-  // Chat (optional, gekürzt)
   handlePublicChatInput = (e) =>
     this.setState({ publicChatInput: e.target.value, publicChatError: "" });
 
-  // === Checkout Handler mit Telegram Notify ===
-  handleCheckout = () => {
+  // === Checkout Handler mit Telegram Notify, Cart schließt & wird geleert ===
+  handleCheckout = async () => {
+    if (this.isCheckoutRunning) return;
+    this.isCheckoutRunning = true;
+
+    // Telegram Nachricht
     this.sendCheckoutTelegramNotification();
+
+    // Schließe Warenkorb Drawer
     this.handleCartClose();
-    if (this.props.onCheckout) this.props.onCheckout();
+
+    // Leere Mengen (input Felder zurücksetzen)
+    this.setState({ menge: {} });
+
+    // Leere Warenkorb über Parent Callback, falls vorhanden
+    if (this.props.onCheckout) {
+      await this.props.onCheckout(); // Erwartet async möglich!
+    }
+
+    // Nur als Schutz: nach 0.5s Checkout wieder freigeben
+    setTimeout(() => (this.isCheckoutRunning = false), 500);
   };
 
   render() {
