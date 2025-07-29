@@ -78,37 +78,6 @@ export default function NotificationPopup({ open = true, onClose, onAction }) {
           >
             <Send size={35} style={{ color: "#23262e" }} />
           </div>
-          <div style={{ fontWeight: 900, fontSize: 21, marginBottom: 11, color: "#a3e635" }}>
-            Telegram Benachrichtigungen aktivieren
-          </div>
-          <div style={{ fontSize: 15.5, color: "#e6ffe6", marginBottom: 22 }}>
-            Aktiviere Push-Benachrichtigungen über Telegram, um keine wichtigen Infos, Statusänderungen oder Angebote mehr zu verpassen. <br /><br />
-            <span style={{ color: "#fff", fontWeight: 700 }}>
-              Wir empfehlen das dringend für maximale Sicherheit &amp; Komfort!
-            </span>
-          </div>
-          <button
-            onClick={onAction}
-            style={{
-              background: "linear-gradient(90deg,#38bdf8 60%,#a3e635 120%)",
-              color: "#23262e",
-              fontWeight: 900,
-              fontSize: 16,
-              border: "none",
-              borderRadius: 12,
-              padding: "14px 0",
-              width: "100%",
-              marginBottom: 5,
-              marginTop: 3,
-              boxShadow: "0 1.5px 10px #a3e63529",
-              cursor: "pointer",
-            }}
-          >
-            Telegram verbinden
-          </button>
-          <div style={{ fontSize: 12.5, color: "#38bdf8", marginTop: 8 }}>
-            Du kannst diese Erinnerung später in den Einstellungen deaktivieren.
-          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
